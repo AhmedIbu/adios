@@ -98,7 +98,7 @@ export function usePlayer() {
       if ("mediaSession" in navigator) {
         navigator.mediaSession.metadata = new MediaMetadata({
           title: track.title,
-          artist: "Pocket Audio",
+          artist: "Adios",
           album: track.folder
         });
         navigator.mediaSession.setActionHandler("play", () => a.play());

@@ -79,7 +79,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="app__header">
-        <h1 className="app__brand">Pocket Audio</h1>
+        <h1 className="app__brand">Adios</h1>
         <button
           className="app__theme"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}

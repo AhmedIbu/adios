@@ -1,4 +1,4 @@
-# Pocket Audio 🎧
+# Adios 🎧
 
 Your personal audio library as a PWA. Upload from any device, stream anywhere, keep tracks offline — locked to you, no Apple Developer account needed.
 

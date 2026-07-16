@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["icons/icon-192.png", "icons/icon-512.png"],
       manifest: {
-        name: "Pocket Audio",
-        short_name: "Pocket Audio",
+        name: "Adios",
+        short_name: "Adios",
         description: "Personal audio library — upload anywhere, listen anywhere.",
         display: "standalone",
         orientation: "portrait",

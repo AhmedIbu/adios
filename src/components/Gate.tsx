@@ -25,7 +25,7 @@ export function Gate() {
         <div className="gate__logo" aria-hidden="true">
           🎧
         </div>
-        <h1 className="gate__title">Pocket Audio</h1>
+        <h1 className="gate__title">Adios</h1>
         <p className="gate__sub">One-time unlock for this device.</p>
         <label className="gate__label" htmlFor="gate-email">
           Email

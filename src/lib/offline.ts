@@ -3,6 +3,7 @@ import { signedUrl } from "./supabase";
 import type { Track } from "./types";
 
 const KEY = (id: string) => `audio-blob:${id}`;
+const TRACK_LIST_KEY = "track-list-cache";
 
 export async function isOffline(id: string): Promise<boolean> {
   return (await get(KEY(id))) !== undefined;
@@ -35,4 +36,13 @@ export async function playableUrl(track: Track): Promise<{ url: string; local: b
   const blob = (await get(KEY(track.id))) as Blob | undefined;
   if (blob) return { url: URL.createObjectURL(blob), local: true };
   return { url: await signedUrl(track.storage_path), local: false };
+}
+
+/** Cache the last known track list so the library can render when offline. */
+export async function cacheTrackList(tracks: Track[]): Promise<void> {
+  await set(TRACK_LIST_KEY, tracks);
+}
+
+export async function getCachedTrackList(): Promise<Track[]> {
+  return ((await get(TRACK_LIST_KEY)) as Track[] | undefined) ?? [];
 }

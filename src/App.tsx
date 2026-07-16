@@ -1,10 +1,14 @@
 import { useEffect, useState, useCallback } from "react";
-import type { Session } from "@supabase/supabase-js";
-import { supabase, listTracks, deleteTrack } from "./lib/supabase";
-import { offlineIds as loadOfflineIds, saveOffline, removeOffline } from "./lib/offline";
+import { listTracks, deleteTrack } from "./lib/supabase";
+import {
+  offlineIds as loadOfflineIds,
+  saveOffline,
+  removeOffline,
+  cacheTrackList,
+  getCachedTrackList
+} from "./lib/offline";
 import type { Track } from "./lib/types";
 import { usePlayer } from "./hooks/usePlayer";
-import { Gate } from "./components/Gate";
 import { Library } from "./components/Library";
 import { Upload } from "./components/Upload";
 import { Player } from "./components/Player";
@@ -12,7 +16,6 @@ import { Player } from "./components/Player";
 type Theme = "dark" | "light";
 
 export default function App() {
-  const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [offline, setOffline] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState<Set<string>>(new Set());
@@ -28,16 +31,17 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
-    return () => sub.subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (!session) return;
-    listTracks().then(setTracks).catch(console.error);
+    listTracks()
+      .then((ts) => {
+        setTracks(ts);
+        cacheTrackList(ts);
+      })
+      .catch(async (e) => {
+        console.error(e);
+        setTracks(await getCachedTrackList());
+      });
     loadOfflineIds().then(setOffline);
-  }, [session]);
+  }, []);
 
   const handleToggleOffline = useCallback(async (t: Track) => {
     setSaving((s) => new Set(s).add(t.id));
@@ -65,21 +69,18 @@ export default function App() {
     if (!confirm(`Delete “${t.title}” everywhere (cloud + offline)?`)) return;
     await deleteTrack(t);
     await removeOffline(t.id);
-    setTracks((ts) => ts.filter((x) => x.id !== t.id));
+    setTracks((ts) => {
+      const next = ts.filter((x) => x.id !== t.id);
+      cacheTrackList(next);
+      return next;
+    });
     setOffline(await loadOfflineIds());
   }, []);
-
-  if (session === undefined) {
-    return <main className="boot" aria-busy="true" />;
-  }
-  if (!session) {
-    return <Gate />;
-  }
 
   return (
     <div className="app">
       <header className="app__header">
-        <h1 className="app__brand">Adios</h1>
+        <h1 className="app__brand">Hey Ibu 👋</h1>
         <button
           className="app__theme"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
@@ -100,7 +101,15 @@ export default function App() {
         onDelete={handleDelete}
       />
 
-      <Upload onUploaded={(t) => setTracks((ts) => [t, ...ts])} />
+      <Upload
+        onUploaded={(t) =>
+          setTracks((ts) => {
+            const next = [t, ...ts];
+            cacheTrackList(next);
+            return next;
+          })
+        }
+      />
 
       <Player
         state={state}

@@ -80,6 +80,27 @@
   --color-on-error: var(--on-error);
 
   --ease-brand: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --animate-float: float 4s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.mesh-gradient {
+  background-color: var(--color-bg);
+  background-image:
+    radial-gradient(at 0% 0%, rgb(81 60 113 / 0.4) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgb(46 99 133 / 0.4) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgb(81 60 113 / 0.2) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgb(154 204 243 / 0.15) 0px, transparent 50%);
 }
 
 /* Layered so Tailwind's utility classes (e.g. text-on-primary) still win

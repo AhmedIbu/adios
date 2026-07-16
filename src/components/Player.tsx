@@ -26,39 +26,50 @@ export function Player({ state, onToggle, onSeekBy, onSeekTo, onSpeed, onSleep }
     <>
       {/* Mini bar */}
       <div
-        className={`fixed right-4 left-4 z-40 mx-auto flex h-20 max-w-xl items-center justify-between overflow-hidden rounded-3xl border border-white/5 bg-surface-high/90 px-4 shadow-2xl backdrop-blur-xl transition-all duration-[400ms] ease-brand ${
+        className={`fixed right-3 left-3 z-40 mx-auto flex h-16 max-w-xl items-center justify-between overflow-hidden rounded-[24px] border border-white/10 px-3 shadow-[0_15px_40px_rgba(0,0,0,0.5)] ring-1 ring-white/5 backdrop-blur-2xl transition-all duration-[400ms] ease-brand ${
           open ? "pointer-events-none translate-y-[calc(100%+2rem)] opacity-0" : ""
         }`}
-        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 4.5rem)" }}
+        style={{
+          bottom: "calc(env(safe-area-inset-bottom, 0px) + 5rem)",
+          backgroundColor: "rgb(45 49 51 / 0.7)",
+          backdropFilter: "blur(24px) saturate(180%)"
+        }}
       >
         <button
           className="flex min-w-0 flex-1 items-center gap-3 text-left"
           onClick={() => setOpen(true)}
           aria-label="Open player"
         >
-          <span className="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-primary-container text-2xl">
+          <span className="relative flex h-10 w-10 flex-none items-center justify-center rounded-xl border border-white/10 bg-primary-container text-lg shadow-lg">
             🎧
+            <span
+              className={`absolute right-0.5 bottom-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#2d3133] bg-primary ${
+                playing ? "animate-pulse" : ""
+              }`}
+            />
           </span>
           <span className="min-w-0">
-            <p className="truncate leading-tight font-bold text-on-surface">{track.title}</p>
+            <p className="truncate text-sm leading-tight font-extrabold tracking-tight text-on-surface">
+              {track.title}
+            </p>
             <span className="mt-0.5 flex items-center gap-1.5">
-              <span className="flex gap-0.5" aria-hidden="true">
-                {[8, 12, 6].map((h, i) => (
+              <span className="flex h-2.5 items-end gap-0.5" aria-hidden="true">
+                {[10, 7].map((h, i) => (
                   <span
                     key={i}
-                    className={`w-1 rounded-full bg-primary ${playing ? "animate-pulse" : ""}`}
+                    className={`w-0.5 rounded-full bg-primary ${playing ? "animate-pulse" : ""}`}
                     style={{ height: h, animationDelay: `${i * 0.2}s` }}
                   />
                 ))}
               </span>
-              <span className="text-[10px] font-black tracking-widest text-primary uppercase">
+              <span className="text-[8px] font-black tracking-[0.1em] text-primary uppercase opacity-90">
                 {playing ? "Playing" : "Paused"}
               </span>
             </span>
           </span>
         </button>
         <button
-          className="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-primary text-on-primary shadow-lg transition-transform active:scale-90"
+          className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-primary text-on-primary shadow-lg transition-transform active:scale-90"
           onClick={onToggle}
           aria-label={playing ? "Pause" : "Play"}
         >
@@ -66,8 +77,11 @@ export function Player({ state, onToggle, onSeekBy, onSeekTo, onSpeed, onSleep }
             {playing ? "pause" : "play_arrow"}
           </span>
         </button>
-        <div className="absolute right-6 bottom-0 left-6 h-0.5 overflow-hidden rounded-full bg-white/10">
-          <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
+        <div className="absolute right-6 bottom-0 left-6 h-0.5 overflow-hidden rounded-full bg-white/5">
+          <div
+            className="h-full bg-gradient-to-r from-primary to-secondary"
+            style={{ width: `${pct}%` }}
+          />
         </div>
       </div>
 

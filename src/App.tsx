@@ -95,22 +95,24 @@ export default function App() {
   }
 
   return (
-    <div className="mx-auto min-h-dvh max-w-xl pb-36">
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between bg-bg/80 px-5 backdrop-blur-md">
-        <h1 className="text-lg font-bold tracking-tight text-primary">Hey Ibu 👋</h1>
+    <div className="mesh-gradient mx-auto min-h-dvh max-w-xl pb-44">
+      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-white/5 bg-bg/60 px-4 backdrop-blur-md">
+        <h1 className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-lg font-extrabold tracking-tight text-transparent">
+          Hey Ibu 👋
+        </h1>
         <button
-          className="flex h-10 w-10 items-center justify-center rounded-full text-on-surface-dim transition-colors duration-200 hover:bg-surface-high hover:text-primary active:scale-90"
+          className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 text-on-surface-dim transition-colors duration-200 hover:text-primary active:scale-90"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           aria-label="Toggle theme"
           title="Toggle theme"
         >
-          <span className="material-symbols-outlined">
+          <span className="material-symbols-outlined text-xl">
             {theme === "dark" ? "light_mode" : "dark_mode"}
           </span>
         </button>
       </header>
 
-      <main className="animate-app-in px-5 pt-4">
+      <main className="animate-app-in space-y-6 px-4 pt-4">
         <Library
           tracks={tracks}
           currentId={state.track?.id ?? null}
@@ -121,15 +123,17 @@ export default function App() {
           onDelete={handleDelete}
         />
 
-        <Upload
-          onUploaded={(t) =>
-            setTracks((ts) => {
-              const next = [t, ...ts];
-              cacheTrackList(next);
-              return next;
-            })
-          }
-        />
+        <div id="upload-section">
+          <Upload
+            onUploaded={(t) =>
+              setTracks((ts) => {
+                const next = [t, ...ts];
+                cacheTrackList(next);
+                return next;
+              })
+            }
+          />
+        </div>
       </main>
 
       <Player
@@ -140,6 +144,42 @@ export default function App() {
         onSpeed={setSpeed}
         onSleep={setSleep}
       />
+
+      <nav className="fixed bottom-0 z-50 w-full border-t border-white/5 bg-bg/60 backdrop-blur-2xl">
+        <div className="mx-auto flex h-16 max-w-xl items-center justify-around px-4 pt-2 pb-[env(safe-area-inset-bottom,0px)]">
+          <button
+            className="flex flex-col items-center justify-center text-primary transition-transform active:scale-90"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          >
+            <span className="material-symbols-outlined is-filled text-2xl">library_music</span>
+            <span className="mt-1 text-[9px] font-extrabold tracking-widest uppercase">
+              Library
+            </span>
+          </button>
+          <button
+            className="flex flex-col items-center justify-center text-on-surface-dim/60 transition-all duration-200 hover:text-on-surface active:scale-90"
+            onClick={() => {
+              document.getElementById("library-search")?.scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+              });
+              document.getElementById("library-search")?.focus();
+            }}
+          >
+            <span className="material-symbols-outlined text-2xl">search</span>
+            <span className="mt-1 text-[9px] font-bold tracking-widest uppercase">Search</span>
+          </button>
+          <button
+            className="flex flex-col items-center justify-center text-on-surface-dim/60 transition-all duration-200 hover:text-on-surface active:scale-90"
+            onClick={() =>
+              document.getElementById("upload-section")?.scrollIntoView({ behavior: "smooth" })
+            }
+          >
+            <span className="material-symbols-outlined text-2xl">upload_file</span>
+            <span className="mt-1 text-[9px] font-bold tracking-widest uppercase">Upload</span>
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }

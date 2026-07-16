@@ -13,6 +13,7 @@ interface Props {
 
 const SPEEDS = [0.75, 1, 1.25, 1.5, 1.75, 2];
 const SLEEPS = [15, 30, 60];
+const WAVE_HEIGHTS = [10, 18, 26, 15, 22, 30, 14, 20];
 
 export function Player({ state, onToggle, onSeekBy, onSeekTo, onSpeed, onSleep }: Props) {
   const [open, setOpen] = useState(false);
@@ -24,112 +25,198 @@ export function Player({ state, onToggle, onSeekBy, onSeekTo, onSpeed, onSleep }
   return (
     <>
       {/* Mini bar */}
-      <div className={`mini ${open ? "mini--hidden" : ""}`}>
-        <button className="mini__body" onClick={() => setOpen(true)} aria-label="Open player">
-          <span className="mini__disc" aria-hidden="true">
+      <div
+        className={`fixed right-4 left-4 z-40 mx-auto flex h-20 max-w-xl items-center justify-between overflow-hidden rounded-3xl border border-white/5 bg-surface-high/90 px-4 shadow-2xl backdrop-blur-xl transition-all duration-[400ms] ease-brand ${
+          open ? "pointer-events-none translate-y-[calc(100%+2rem)] opacity-0" : ""
+        }`}
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 4.5rem)" }}
+      >
+        <button
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+          onClick={() => setOpen(true)}
+          aria-label="Open player"
+        >
+          <span className="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-primary-container text-2xl">
             🎧
           </span>
-          <span className="mini__text">
-            <span className="mini__title">{track.title}</span>
-            <span className="mini__time">
-              {fmtTime(time)} / {fmtTime(duration)}
+          <span className="min-w-0">
+            <p className="truncate leading-tight font-bold text-on-surface">{track.title}</p>
+            <span className="mt-0.5 flex items-center gap-1.5">
+              <span className="flex gap-0.5" aria-hidden="true">
+                {[8, 12, 6].map((h, i) => (
+                  <span
+                    key={i}
+                    className={`w-1 rounded-full bg-primary ${playing ? "animate-pulse" : ""}`}
+                    style={{ height: h, animationDelay: `${i * 0.2}s` }}
+                  />
+                ))}
+              </span>
+              <span className="text-[10px] font-black tracking-widest text-primary uppercase">
+                {playing ? "Playing" : "Paused"}
+              </span>
             </span>
           </span>
         </button>
-        <button className="mini__toggle" onClick={onToggle} aria-label={playing ? "Pause" : "Play"}>
-          {playing ? "❚❚" : "▶"}
+        <button
+          className="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-primary text-on-primary shadow-lg transition-transform active:scale-90"
+          onClick={onToggle}
+          aria-label={playing ? "Pause" : "Play"}
+        >
+          <span className="material-symbols-outlined is-filled text-2xl">
+            {playing ? "pause" : "play_arrow"}
+          </span>
         </button>
-        <div className="mini__bar" aria-hidden="true">
-          <div className="mini__bar-fill" style={{ width: `${pct}%` }} />
+        <div className="absolute right-6 bottom-0 left-6 h-0.5 overflow-hidden rounded-full bg-white/10">
+          <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
         </div>
       </div>
 
       {/* Full sheet */}
-      <div className={`sheet ${open ? "sheet--open" : ""}`} role="dialog" aria-label="Now playing">
-        <button className="sheet__close" onClick={() => setOpen(false)} aria-label="Close player">
-          ▾
-        </button>
+      <div
+        role="dialog"
+        aria-label="Now playing"
+        className={`fixed inset-0 z-50 mx-auto flex max-w-xl flex-col overflow-y-auto bg-bg transition-transform duration-[450ms] ease-brand ${
+          open ? "translate-y-0" : "translate-y-full"
+        }`}
+        style={{
+          paddingTop: "calc(env(safe-area-inset-top, 0px) + 16px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 26px)"
+        }}
+      >
+        <header className="flex h-16 items-center justify-center px-5">
+          <button
+            className="flex h-10 w-10 items-center justify-center rounded-full text-primary transition-colors hover:bg-surface-high active:scale-90"
+            onClick={() => setOpen(false)}
+            aria-label="Close player"
+          >
+            <span className="material-symbols-outlined text-3xl">keyboard_arrow_down</span>
+          </button>
+        </header>
 
-        <div className="sheet__art" aria-hidden="true">
-          <div className={`sheet__wave ${playing ? "sheet__wave--live" : ""}`}>
-            {Array.from({ length: 14 }).map((_, i) => (
-              <i key={i} style={{ animationDelay: `${(i % 5) * 0.12}s` }} />
-            ))}
+        <div className="flex flex-1 flex-col px-6 pb-6">
+          <div className="flex flex-grow flex-col items-center justify-center py-6">
+            <div className="relative aspect-square w-full max-w-[320px] overflow-hidden rounded-[2rem] bg-gradient-to-br from-primary-container to-secondary-container shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
+              <div className="flex h-full items-center justify-center text-7xl">🎧</div>
+              <div className="absolute inset-x-0 bottom-0 flex h-24 items-end justify-center gap-1 px-8 pb-8">
+                {WAVE_HEIGHTS.map((h, i) => (
+                  <div
+                    key={i}
+                    className={`waveform-bar w-1 rounded-full bg-white/80 ${
+                      playing ? "waveform-bar--live" : ""
+                    }`}
+                    style={{ height: h * 2, animationDelay: `${(i % 5) * 0.12}s` }}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
 
-        <h2 className="sheet__title">{track.title}</h2>
-        <p className="sheet__folder">{track.folder}</p>
-
-        <input
-          className="sheet__scrub"
-          type="range"
-          min={0}
-          max={duration || 0}
-          step={1}
-          value={Math.min(time, duration || 0)}
-          onChange={(e) => onSeekTo(Number(e.target.value))}
-          aria-label="Seek"
-        />
-        <div className="sheet__times">
-          <span>{fmtTime(time)}</span>
-          <span>{fmtTime(duration)}</span>
-        </div>
-
-        <div className="sheet__controls">
-          <button className="sheet__skip" onClick={() => onSeekBy(-15)}>
-            −15s
-          </button>
-          <button className="sheet__play" onClick={onToggle} aria-label={playing ? "Pause" : "Play"}>
-            {playing ? "❚❚" : "▶"}
-          </button>
-          <button className="sheet__skip" onClick={() => onSeekBy(15)}>
-            +15s
-          </button>
-        </div>
-
-        <div className="sheet__row">
-          <span className="sheet__row-label">Speed</span>
-          <div className="sheet__pills">
-            {SPEEDS.map((s) => (
-              <button
-                key={s}
-                className={`sheet__pill ${speed === s ? "sheet__pill--on" : ""}`}
-                onClick={() => onSpeed(s)}
-              >
-                {s}×
-              </button>
-            ))}
+          <div className="mb-8">
+            <h2 className="text-2xl font-semibold tracking-tight text-primary">{track.title}</h2>
+            <p className="mt-1 font-medium text-on-surface-dim capitalize opacity-90">
+              {track.folder}
+            </p>
           </div>
-        </div>
 
-        <div className="sheet__row">
-          <span className="sheet__row-label">Sleep</span>
-          <div className="sheet__pills">
-            {SLEEPS.map((m) => (
-              <button
-                key={m}
-                className={`sheet__pill ${
-                  sleepLeft !== null && Math.ceil(sleepLeft / 60) <= m && sleepLeft > (m - 15) * 60
-                    ? ""
-                    : ""
-                }`}
-                onClick={() => onSleep(m)}
-              >
-                {m}m
-              </button>
-            ))}
+          <div className="mb-6 space-y-2">
+            <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-surface-high">
+              <div className="absolute h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+              <input
+                className="absolute inset-0 z-10 w-full cursor-pointer opacity-0"
+                type="range"
+                min={0}
+                max={duration || 0}
+                step={1}
+                value={Math.min(time, duration || 0)}
+                onChange={(e) => onSeekTo(Number(e.target.value))}
+                aria-label="Seek"
+              />
+            </div>
+            <div className="flex justify-between text-xs text-on-surface-dim">
+              <span>{fmtTime(time)}</span>
+              <span>{fmtTime(duration)}</span>
+            </div>
+          </div>
+
+          <div className="mb-8 flex items-center justify-center gap-8">
             <button
-              className={`sheet__pill ${sleepLeft === null ? "sheet__pill--on" : ""}`}
-              onClick={() => onSleep(null)}
+              className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-extrabold text-primary transition-colors hover:bg-surface-high active:scale-90"
+              onClick={() => onSeekBy(-15)}
+              aria-label="Back 15 seconds"
             >
-              off
+              −15s
+            </button>
+            <button
+              className="flex h-20 w-20 items-center justify-center rounded-full bg-primary text-on-primary shadow-lg shadow-black/30 transition-all hover:brightness-110 active:scale-95"
+              onClick={onToggle}
+              aria-label={playing ? "Pause" : "Play"}
+            >
+              <span className="material-symbols-outlined is-filled text-[44px]">
+                {playing ? "pause" : "play_arrow"}
+              </span>
+            </button>
+            <button
+              className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-extrabold text-primary transition-colors hover:bg-surface-high active:scale-90"
+              onClick={() => onSeekBy(15)}
+              aria-label="Forward 15 seconds"
+            >
+              +15s
             </button>
           </div>
+
+          <div className="mb-6 flex items-center gap-3">
+            <span className="w-14 flex-none text-xs font-extrabold tracking-wide text-on-surface-dim uppercase">
+              Speed
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {SPEEDS.map((s) => (
+                <button
+                  key={s}
+                  className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+                    speed === s
+                      ? "bg-primary text-on-primary"
+                      : "bg-surface-high text-on-surface-dim"
+                  }`}
+                  onClick={() => onSpeed(s)}
+                >
+                  {s}×
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="w-14 flex-none text-xs font-extrabold tracking-wide text-on-surface-dim uppercase">
+              Sleep
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {SLEEPS.map((m) => (
+                <button
+                  key={m}
+                  className="rounded-full bg-surface-high px-3 py-1.5 text-xs font-bold text-on-surface-dim transition-colors"
+                  onClick={() => onSleep(m)}
+                >
+                  {m}m
+                </button>
+              ))}
+              <button
+                className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+                  sleepLeft === null
+                    ? "bg-primary text-on-primary"
+                    : "bg-surface-high text-on-surface-dim"
+                }`}
+                onClick={() => onSleep(null)}
+              >
+                off
+              </button>
+            </div>
+          </div>
+          {sleepLeft !== null && (
+            <p className="mt-3 text-center text-xs text-primary">
+              Pausing in {fmtTime(sleepLeft)}
+            </p>
+          )}
         </div>
-        {sleepLeft !== null && (
-          <p className="sheet__sleep-note">Pausing in {fmtTime(sleepLeft)}</p>
-        )}
       </div>
     </>
   );

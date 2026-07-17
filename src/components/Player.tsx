@@ -30,7 +30,7 @@ export function Player({ state, onToggle, onSeekBy, onSeekTo, onSpeed, onSleep }
           open ? "pointer-events-none translate-y-[calc(100%+2rem)] opacity-0" : ""
         }`}
         style={{
-          bottom: "calc(env(safe-area-inset-bottom, 0px) + 5rem)",
+          bottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)",
           backgroundColor: "rgb(45 49 51 / 0.7)",
           backdropFilter: "blur(24px) saturate(180%)"
         }}

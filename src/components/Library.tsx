@@ -1,21 +1,38 @@
 import { useEffect, useRef, useState } from "react";
 import type { Track, Folder } from "../lib/types";
-import { FOLDERS, FOLDER_LABELS, fmtTime } from "../lib/types";
+import { folderLabel, fmtTime } from "../lib/types";
+import type { FolderRow } from "../lib/supabase";
 
 interface Props {
   tracks: Track[];
+  folders: FolderRow[];
   currentId: string | null;
   offlineIds: Set<string>;
   savingOffline: Set<string>;
   onPlay: (t: Track) => void;
-  onToggleOffline: (t: Track) => void;
+  onKeepOffline: (t: Track, durationMs: number | null) => void;
+  onRemoveOffline: (t: Track) => void;
   onDelete: (t: Track) => void;
+  onRename: (t: Track, title: string) => void;
 }
 
-const FOLDER_STYLE: Record<
-  Folder,
-  { icon: string; gradient: string; glow: string; iconColor: string; delay: string }
-> = {
+const OFFLINE_DURATIONS: { label: string; ms: number | null }[] = [
+  { label: "1 hour", ms: 60 * 60 * 1000 },
+  { label: "12 hours", ms: 12 * 60 * 60 * 1000 },
+  { label: "1 day", ms: 24 * 60 * 60 * 1000 },
+  { label: "1 week", ms: 7 * 24 * 60 * 60 * 1000 },
+  { label: "Forever", ms: null }
+];
+
+interface FolderStyle {
+  icon: string;
+  gradient: string;
+  glow: string;
+  iconColor: string;
+  delay: string;
+}
+
+const KNOWN_FOLDER_STYLE: Record<string, FolderStyle> = {
   music: {
     icon: "library_music",
     gradient: "from-[#2e6385] to-[#00344d]",
@@ -67,22 +84,59 @@ const FOLDER_STYLE: Record<
   }
 };
 
-const ALL_FOLDERS = FOLDERS.filter((f) => f.id !== "all").map((f) => f.id as Folder);
+/** New user-created folders cycle through this palette, picked deterministically by name. */
+const FALLBACK_STYLES: FolderStyle[] = [
+  {
+    icon: "folder",
+    gradient: "from-[#2e5f6a] to-[#0f2a30]",
+    glow: "shadow-[0_4px_20px_-5px_rgba(154,220,243,0.3)]",
+    iconColor: "text-[#9cdcf3]",
+    delay: "0s"
+  },
+  {
+    icon: "folder",
+    gradient: "from-[#5f6a2e] to-[#2a300f]",
+    glow: "shadow-[0_4px_20px_-5px_rgba(220,243,154,0.3)]",
+    iconColor: "text-[#dcf39c]",
+    delay: "0.3s"
+  },
+  {
+    icon: "folder",
+    gradient: "from-[#6a2e5f] to-[#300f2a]",
+    glow: "shadow-[0_4px_20px_-5px_rgba(243,154,220,0.3)]",
+    iconColor: "text-[#f39cdc]",
+    delay: "0.6s"
+  }
+];
+
+function styleFor(name: string): FolderStyle {
+  if (KNOWN_FOLDER_STYLE[name]) return KNOWN_FOLDER_STYLE[name];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return FALLBACK_STYLES[hash % FALLBACK_STYLES.length];
+}
+
 const PAGE_SIZE = 5;
 
 export function Library({
   tracks,
+  folders,
   currentId,
   offlineIds,
   savingOffline,
   onPlay,
-  onToggleOffline,
-  onDelete
+  onKeepOffline,
+  onRemoveOffline,
+  onDelete,
+  onRename
 }: Props) {
   const [filter, setFilter] = useState<Folder | "all">("all");
   const [query, setQuery] = useState("");
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [menuMode, setMenuMode] = useState<"main" | "offline">("main");
   const [showAll, setShowAll] = useState(false);
+  const [renaming, setRenaming] = useState<Track | null>(null);
+  const [renameValue, setRenameValue] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -91,6 +145,11 @@ export function Library({
     document.addEventListener("click", close);
     return () => document.removeEventListener("click", close);
   }, [openMenu]);
+
+  function toggleMenu(id: string) {
+    setMenuMode("main");
+    setOpenMenu((cur) => (cur === id ? null : id));
+  }
 
   useEffect(() => {
     setShowAll(false);
@@ -109,13 +168,14 @@ export function Library({
       <div className="mb-6">
         <h2 className="mb-3 text-xl font-bold tracking-tight text-on-surface">Folders</h2>
         <div className="grid grid-cols-3 gap-3">
-          {ALL_FOLDERS.map((f) => {
-            const style = FOLDER_STYLE[f];
+          {folders.map((folder) => {
+            const f = folder.name;
+            const style = styleFor(f);
             const count = tracks.filter((t) => t.folder === f).length;
             const on = filter === f;
             return (
               <button
-                key={f}
+                key={folder.id}
                 className={`group relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br transition-transform duration-200 active:scale-95 ${style.gradient} ${style.glow} ${
                   on ? "ring-2 ring-primary" : ""
                 }`}
@@ -130,7 +190,7 @@ export function Library({
                   </span>
                 </div>
                 <p className="px-1 text-center text-xs leading-tight font-bold text-white">
-                  {FOLDER_LABELS[f]}
+                  {folderLabel(f)}
                 </p>
                 <span className="text-[8px] font-medium tracking-tighter text-white/60 uppercase">
                   {count} {count === 1 ? "Track" : "Tracks"}
@@ -154,18 +214,28 @@ export function Library({
       />
 
       {/* Folder chips */}
-      <nav className="mb-4 flex gap-2 overflow-x-auto" aria-label="Folders">
-        {FOLDERS.map((f) => (
+      <nav className="mb-4 flex gap-3 overflow-x-auto pb-1" aria-label="Folders">
+        <button
+          className={`flex-none rounded-full px-4 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors duration-200 ${
+            filter === "all"
+              ? "bg-primary text-on-primary"
+              : "bg-surface-glass text-on-surface-dim hover:text-on-surface"
+          }`}
+          onClick={() => setFilter("all")}
+        >
+          All
+        </button>
+        {folders.map((f) => (
           <button
             key={f.id}
             className={`flex-none rounded-full px-4 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors duration-200 ${
-              filter === f.id
+              filter === f.name
                 ? "bg-primary text-on-primary"
                 : "bg-surface-glass text-on-surface-dim hover:text-on-surface"
             }`}
-            onClick={() => setFilter(f.id)}
+            onClick={() => setFilter(f.name)}
           >
-            {f.label}
+            {folderLabel(f.name)}
           </button>
         ))}
       </nav>
@@ -182,7 +252,7 @@ export function Library({
 
       <ul className="flex flex-col gap-2">
         {displayed.map((t) => {
-          const style = FOLDER_STYLE[t.folder];
+          const style = styleFor(t.folder);
           const kept = offlineIds.has(t.id);
           const saving = savingOffline.has(t.id);
           const isCurrent = currentId === t.id;
@@ -219,7 +289,7 @@ export function Library({
                     {kept ? "offline_pin" : "download"}
                   </span>
                   <p className="truncate text-[10px] font-medium tracking-tighter text-on-surface-dim/80 uppercase">
-                    {fmtTime(t.duration)} · {FOLDER_LABELS[t.folder]}
+                    {fmtTime(t.duration)} · {folderLabel(t.folder)}
                     {t.position > 5 && t.duration - t.position > 5 && (
                       <> · resume {fmtTime(t.position)}</>
                     )}
@@ -230,7 +300,7 @@ export function Library({
                 className="shrink-0 rounded-full p-1.5 text-on-surface-dim hover:bg-white/5"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setOpenMenu(menuOpen ? null : t.id);
+                  toggleMenu(t.id);
                 }}
                 aria-label={`More options for ${t.title}`}
                 aria-expanded={menuOpen}
@@ -238,24 +308,52 @@ export function Library({
                 <span className="material-symbols-outlined text-xl">more_vert</span>
               </button>
 
-              {menuOpen && (
+              {menuOpen && menuMode === "main" && (
                 <div
-                  className="absolute top-12 right-2 z-20 w-48 overflow-hidden rounded-xl border border-white/10 bg-surface shadow-2xl"
+                  className="absolute top-12 right-2 z-20 w-52 overflow-hidden rounded-xl border border-white/10 bg-surface shadow-2xl"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <button
-                    className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-on-surface hover:bg-white/5 disabled:opacity-50"
-                    disabled={saving}
+                    className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-on-surface hover:bg-white/5"
                     onClick={() => {
-                      onToggleOffline(t);
+                      setRenaming(t);
+                      setRenameValue(t.title);
                       setOpenMenu(null);
                     }}
                   >
-                    <span className="material-symbols-outlined text-lg">
-                      {saving ? "more_horiz" : kept ? "check_circle" : "download"}
-                    </span>
-                    {kept ? "Remove offline copy" : "Keep offline"}
+                    <span className="material-symbols-outlined text-lg">edit</span>
+                    Rename
                   </button>
+                  {kept ? (
+                    <button
+                      className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-on-surface hover:bg-white/5 disabled:opacity-50"
+                      disabled={saving}
+                      onClick={() => {
+                        onRemoveOffline(t);
+                        setOpenMenu(null);
+                      }}
+                    >
+                      <span className="material-symbols-outlined text-lg">check_circle</span>
+                      Remove offline copy
+                    </button>
+                  ) : (
+                    <button
+                      className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-on-surface hover:bg-white/5 disabled:opacity-50"
+                      disabled={saving}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuMode("offline");
+                      }}
+                    >
+                      <span className="material-symbols-outlined text-lg">
+                        {saving ? "more_horiz" : "download"}
+                      </span>
+                      Keep offline
+                      <span className="material-symbols-outlined ml-auto text-lg">
+                        chevron_right
+                      </span>
+                    </button>
+                  )}
                   <button
                     className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-error hover:bg-white/5"
                     onClick={() => {
@@ -266,6 +364,33 @@ export function Library({
                     <span className="material-symbols-outlined text-lg">delete</span>
                     Delete
                   </button>
+                </div>
+              )}
+
+              {menuOpen && menuMode === "offline" && (
+                <div
+                  className="absolute top-12 right-2 z-20 w-52 overflow-hidden rounded-xl border border-white/10 bg-surface shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs font-semibold tracking-wide text-on-surface-dim uppercase hover:bg-white/5"
+                    onClick={() => setMenuMode("main")}
+                  >
+                    <span className="material-symbols-outlined text-lg">chevron_left</span>
+                    Keep offline for…
+                  </button>
+                  {OFFLINE_DURATIONS.map((d) => (
+                    <button
+                      key={d.label}
+                      className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-on-surface hover:bg-white/5"
+                      onClick={() => {
+                        onKeepOffline(t, d.ms);
+                        setOpenMenu(null);
+                      }}
+                    >
+                      {d.label}
+                    </button>
+                  ))}
                 </div>
               )}
             </li>
@@ -280,6 +405,51 @@ export function Library({
         >
           Show all {visible.length} tracks
         </button>
+      )}
+
+      {renaming && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-6 backdrop-blur-sm"
+          onClick={() => setRenaming(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-white/10 bg-surface p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-3 text-lg font-bold text-on-surface">Rename track</h3>
+            <input
+              autoFocus
+              className="mb-4 h-12 w-full rounded-lg border border-outline-dim bg-bg/40 px-4 text-on-surface focus:ring-2 focus:ring-primary/20 focus:outline-none"
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && renameValue.trim()) {
+                  onRename(renaming, renameValue.trim());
+                  setRenaming(null);
+                }
+                if (e.key === "Escape") setRenaming(null);
+              }}
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-on-surface-dim hover:bg-white/5"
+                onClick={() => setRenaming(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-on-primary disabled:opacity-50"
+                disabled={!renameValue.trim()}
+                onClick={() => {
+                  onRename(renaming, renameValue.trim());
+                  setRenaming(null);
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </section>
   );

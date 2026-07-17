@@ -1,11 +1,4 @@
-export type Folder =
-  | "music"
-  | "beginning-to-the-end"
-  | "emotional-reminders"
-  | "lessons-from-quran"
-  | "motivational-reminders"
-  | "powerful-reminders"
-  | "notes";
+export type Folder = string;
 
 export interface Track {
   id: string;
@@ -18,26 +11,26 @@ export interface Track {
   created_at: string;
 }
 
-export const FOLDER_LABELS: Record<Folder, string> = {
-  music: "Music",
-  "beginning-to-the-end": "Beginning to the End",
-  "emotional-reminders": "Emotional Reminders",
-  "lessons-from-quran": "Lessons from Quran",
-  "motivational-reminders": "Motivational Reminders",
-  "powerful-reminders": "Powerful Reminders",
-  notes: "Notes"
-};
-
-export const FOLDERS: { id: Folder | "all"; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "music", label: FOLDER_LABELS.music },
-  { id: "beginning-to-the-end", label: FOLDER_LABELS["beginning-to-the-end"] },
-  { id: "emotional-reminders", label: FOLDER_LABELS["emotional-reminders"] },
-  { id: "lessons-from-quran", label: FOLDER_LABELS["lessons-from-quran"] },
-  { id: "motivational-reminders", label: FOLDER_LABELS["motivational-reminders"] },
-  { id: "powerful-reminders", label: FOLDER_LABELS["powerful-reminders"] },
-  { id: "notes", label: FOLDER_LABELS.notes }
+export const DEFAULT_FOLDERS = [
+  "music",
+  "beginning-to-the-end",
+  "emotional-reminders",
+  "lessons-from-quran",
+  "motivational-reminders",
+  "powerful-reminders",
+  "notes"
 ];
+
+/** Legacy folders were created as hyphenated slugs; new ones are typed as-is. */
+export function folderLabel(name: string): string {
+  if (name.includes("-") && !name.includes(" ")) {
+    return name
+      .split("-")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+  }
+  return name;
+}
 
 export function fmtTime(s: number): string {
   if (!isFinite(s) || s < 0) s = 0;

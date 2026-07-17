@@ -1,6 +1,16 @@
 import { useEffect, useState, useCallback } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { supabase, listTracks, deleteTrack } from "./lib/supabase";
+import {
+  supabase,
+  listTracks,
+  deleteTrack,
+  renameTrack,
+  seedDefaultFoldersIfEmpty,
+  createFolder,
+  renameFolder,
+  deleteFolder
+} from "./lib/supabase";
+import type { FolderRow } from "./lib/supabase";
 import {
   offlineIds as loadOfflineIds,
   saveOffline,
@@ -20,12 +30,24 @@ type Theme = "dark" | "light";
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [tracks, setTracks] = useState<Track[]>([]);
+  const [folders, setFolders] = useState<FolderRow[]>([]);
   const [offline, setOffline] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState<Set<string>>(new Set());
   const [theme, setTheme] = useState<Theme>(
     () => (localStorage.getItem("theme") as Theme) || "dark"
   );
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const goTo = useCallback((id: string | null) => {
+    setDrawerOpen(false);
+    if (id === null) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (id === "library-search") document.getElementById(id)?.focus();
+  }, []);
 
   const { state, play, toggle, seekBy, seekTo, setSpeed, setSleep } = usePlayer();
 
@@ -58,17 +80,15 @@ export default function App() {
         setTracks(await getCachedTrackList());
       });
     loadOfflineIds().then(setOffline);
+    seedDefaultFoldersIfEmpty()
+      .then(setFolders)
+      .catch((e) => console.error(e));
   }, [session]);
 
-  const handleToggleOffline = useCallback(async (t: Track) => {
+  const handleKeepOffline = useCallback(async (t: Track, durationMs: number | null) => {
     setSaving((s) => new Set(s).add(t.id));
     try {
-      const kept = (await loadOfflineIds()).has(t.id);
-      if (kept) {
-        await removeOffline(t.id);
-      } else {
-        await saveOffline(t);
-      }
+      await saveOffline(t, durationMs);
       setOffline(await loadOfflineIds());
     } catch (e) {
       console.error(e);
@@ -79,6 +99,25 @@ export default function App() {
         n.delete(t.id);
         return n;
       });
+    }
+  }, []);
+
+  const handleRemoveOffline = useCallback(async (t: Track) => {
+    await removeOffline(t.id);
+    setOffline(await loadOfflineIds());
+  }, []);
+
+  const handleRename = useCallback(async (t: Track, title: string) => {
+    try {
+      await renameTrack(t.id, title);
+      setTracks((ts) => {
+        const next = ts.map((x) => (x.id === t.id ? { ...x, title } : x));
+        cacheTrackList(next);
+        return next;
+      });
+    } catch (e) {
+      console.error(e);
+      alert("Couldn't rename — check your connection.");
     }
   }, []);
 
@@ -94,6 +133,43 @@ export default function App() {
     setOffline(await loadOfflineIds());
   }, []);
 
+  const handleCreateFolder = useCallback(async (name: string) => {
+    try {
+      const f = await createFolder(name);
+      setFolders((fs) => [...fs, f].sort((a, b) => a.name.localeCompare(b.name)));
+    } catch (e) {
+      console.error(e);
+      alert(e instanceof Error ? e.message : "Couldn't create folder.");
+    }
+  }, []);
+
+  const handleRenameFolder = useCallback(async (f: FolderRow, newName: string) => {
+    try {
+      await renameFolder(f.id, f.name, newName);
+      setFolders((fs) =>
+        fs.map((x) => (x.id === f.id ? { ...x, name: newName } : x)).sort((a, b) => a.name.localeCompare(b.name))
+      );
+      setTracks((ts) => {
+        const next = ts.map((t) => (t.folder === f.name ? { ...t, folder: newName } : t));
+        cacheTrackList(next);
+        return next;
+      });
+    } catch (e) {
+      console.error(e);
+      alert(e instanceof Error ? e.message : "Couldn't rename folder.");
+    }
+  }, []);
+
+  const handleDeleteFolder = useCallback(async (f: FolderRow) => {
+    try {
+      await deleteFolder(f.id, f.name);
+      setFolders((fs) => fs.filter((x) => x.id !== f.id));
+    } catch (e) {
+      console.error(e);
+      alert(e instanceof Error ? e.message : "Couldn't delete folder.");
+    }
+  }, []);
+
   if (session === undefined) {
     return <main className="min-h-dvh bg-bg" aria-busy="true" />;
   }
@@ -102,7 +178,10 @@ export default function App() {
   }
 
   return (
-    <div className="mesh-gradient mx-auto min-h-dvh max-w-xl pb-44">
+    <div
+      className="mesh-gradient mx-auto min-h-dvh max-w-xl"
+      style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6rem)" }}
+    >
       <header
         className="sticky top-0 z-30 flex items-center justify-between border-b border-white/5 bg-bg/60 px-4 backdrop-blur-md"
         style={{
@@ -110,9 +189,19 @@ export default function App() {
           height: "calc(3.5rem + env(safe-area-inset-top, 0px))"
         }}
       >
-        <h1 className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-lg font-extrabold tracking-tight text-transparent">
-          Hey Ibu 👋
-        </h1>
+        <div className="flex items-center gap-2">
+          <button
+            className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 text-on-surface-dim transition-colors duration-200 hover:text-primary active:scale-90"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Open menu"
+            title="Menu"
+          >
+            <span className="material-symbols-outlined text-xl">menu</span>
+          </button>
+          <h1 className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-lg font-extrabold tracking-tight text-transparent">
+            Hey Ibu 👋
+          </h1>
+        </div>
         <button
           className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 text-on-surface-dim transition-colors duration-200 hover:text-primary active:scale-90"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
@@ -125,19 +214,68 @@ export default function App() {
         </button>
       </header>
 
+      {/* Sidebar drawer */}
+      <div
+        className={`fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-brand ${
+          drawerOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        onClick={() => setDrawerOpen(false)}
+        aria-hidden={!drawerOpen}
+      />
+      <nav
+        className={`fixed top-0 left-0 z-[70] flex h-full w-72 max-w-[80%] flex-col border-r border-white/10 bg-surface shadow-2xl transition-transform duration-300 ease-brand ${
+          drawerOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+        aria-label="Main menu"
+      >
+        <div className="flex h-14 items-center px-4">
+          <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-lg font-extrabold tracking-tight text-transparent">
+            Adios
+          </span>
+        </div>
+        <div className="flex flex-col gap-1 px-3 py-2">
+          <button
+            className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-on-surface transition-colors hover:bg-white/5"
+            onClick={() => goTo(null)}
+          >
+            <span className="material-symbols-outlined is-filled text-primary">library_music</span>
+            <span className="font-semibold">Library</span>
+          </button>
+          <button
+            className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-on-surface transition-colors hover:bg-white/5"
+            onClick={() => goTo("library-search")}
+          >
+            <span className="material-symbols-outlined text-primary">search</span>
+            <span className="font-semibold">Search</span>
+          </button>
+          <button
+            className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-on-surface transition-colors hover:bg-white/5"
+            onClick={() => goTo("upload-section")}
+          >
+            <span className="material-symbols-outlined text-primary">upload_file</span>
+            <span className="font-semibold">Upload</span>
+          </button>
+        </div>
+      </nav>
+
       <main className="animate-app-in space-y-6 px-4 pt-4">
         <Library
           tracks={tracks}
+          folders={folders}
           currentId={state.track?.id ?? null}
           offlineIds={offline}
           savingOffline={saving}
           onPlay={play}
-          onToggleOffline={handleToggleOffline}
+          onKeepOffline={handleKeepOffline}
+          onRemoveOffline={handleRemoveOffline}
           onDelete={handleDelete}
+          onRename={handleRename}
         />
 
         <div id="upload-section">
           <Upload
+            folders={folders}
             onUploaded={(t) =>
               setTracks((ts) => {
                 const next = [t, ...ts];
@@ -145,6 +283,9 @@ export default function App() {
                 return next;
               })
             }
+            onCreateFolder={handleCreateFolder}
+            onRenameFolder={handleRenameFolder}
+            onDeleteFolder={handleDeleteFolder}
           />
         </div>
       </main>
@@ -162,52 +303,13 @@ export default function App() {
         className={`fixed right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-primary text-on-primary shadow-lg shadow-black/30 transition-all duration-200 ease-brand active:scale-90 ${
           showBackToTop ? "opacity-100" : "pointer-events-none translate-y-2 opacity-0"
         }`}
-        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 9.5rem)" }}
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 6rem)" }}
         onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
         aria-label="Back to top"
         title="Back to top"
       >
         <span className="material-symbols-outlined text-2xl">arrow_upward</span>
       </button>
-
-      <nav className="fixed bottom-0 z-50 w-full border-t border-white/5 bg-bg/60 backdrop-blur-2xl">
-        <div
-          className="mx-auto flex max-w-xl items-center justify-around px-4 pt-2"
-          style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom, 0px))" }}
-        >
-          <button
-            className="flex flex-col items-center justify-center text-primary transition-transform active:scale-90"
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          >
-            <span className="material-symbols-outlined is-filled text-2xl">library_music</span>
-            <span className="mt-1 text-[9px] font-extrabold tracking-widest uppercase">
-              Library
-            </span>
-          </button>
-          <button
-            className="flex flex-col items-center justify-center text-on-surface-dim/60 transition-all duration-200 hover:text-on-surface active:scale-90"
-            onClick={() => {
-              document.getElementById("library-search")?.scrollIntoView({
-                behavior: "smooth",
-                block: "center"
-              });
-              document.getElementById("library-search")?.focus();
-            }}
-          >
-            <span className="material-symbols-outlined text-2xl">search</span>
-            <span className="mt-1 text-[9px] font-bold tracking-widest uppercase">Search</span>
-          </button>
-          <button
-            className="flex flex-col items-center justify-center text-on-surface-dim/60 transition-all duration-200 hover:text-on-surface active:scale-90"
-            onClick={() =>
-              document.getElementById("upload-section")?.scrollIntoView({ behavior: "smooth" })
-            }
-          >
-            <span className="material-symbols-outlined text-2xl">upload_file</span>
-            <span className="mt-1 text-[9px] font-bold tracking-widest uppercase">Upload</span>
-          </button>
-        </div>
-      </nav>
     </div>
   );
 }

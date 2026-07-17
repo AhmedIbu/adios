@@ -14,6 +14,10 @@ interface Props {
   onRemoveOffline: (t: Track) => void;
   onDelete: (t: Track) => void;
   onRename: (t: Track, title: string) => void;
+  /** Home mode: only tracks with a play history, no search/folder-grid chrome. */
+  playedOnly: boolean;
+  /** Browse mode: starting folder filter, set from the sidebar's Library dropdown. */
+  initialFilter?: Folder | "all";
 }
 
 const OFFLINE_DURATIONS: { label: string; ms: number | null }[] = [
@@ -128,9 +132,11 @@ export function Library({
   onKeepOffline,
   onRemoveOffline,
   onDelete,
-  onRename
+  onRename,
+  playedOnly,
+  initialFilter
 }: Props) {
-  const [filter, setFilter] = useState<Folder | "all">("all");
+  const [filter, setFilter] = useState<Folder | "all">(initialFilter ?? "all");
   const [query, setQuery] = useState("");
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [menuMode, setMenuMode] = useState<"main" | "offline">("main");
@@ -158,104 +164,109 @@ export function Library({
   const visible = tracks
     .filter(
       (t) =>
+        (!playedOnly || t.last_played_at) &&
         (filter === "all" || t.folder === filter) &&
         t.title.toLowerCase().includes(query.toLowerCase())
     )
-    .sort((a, b) => {
-      if (a.last_played_at && b.last_played_at) {
-        return new Date(b.last_played_at).getTime() - new Date(a.last_played_at).getTime();
-      }
-      if (a.last_played_at) return -1;
-      if (b.last_played_at) return 1;
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    });
+    .sort((a, b) =>
+      playedOnly
+        ? new Date(b.last_played_at!).getTime() - new Date(a.last_played_at!).getTime()
+        : new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
   const displayed = showAll ? visible : visible.slice(0, PAGE_SIZE);
+  const heading = playedOnly ? "Recently Played" : filter === "all" ? "All Tracks" : folderLabel(filter);
 
   return (
     <section>
-      {/* Folder quick-access grid */}
-      <div className="mb-6">
-        <h2 className="mb-3 text-xl font-bold tracking-tight text-on-surface">Folders</h2>
-        <div className="grid grid-cols-3 gap-3">
-          {folders.map((folder) => {
-            const f = folder.name;
-            const style = styleFor(f);
-            const count = tracks.filter((t) => t.folder === f).length;
-            const on = filter === f;
-            return (
+      {!playedOnly && (
+        <>
+          {/* Folder quick-access grid */}
+          <div className="mb-6">
+            <h2 className="mb-3 text-xl font-bold tracking-tight text-on-surface">Folders</h2>
+            <div className="grid grid-cols-3 gap-3">
+              {folders.map((folder) => {
+                const f = folder.name;
+                const style = styleFor(f);
+                const count = tracks.filter((t) => t.folder === f).length;
+                const on = filter === f;
+                return (
+                  <button
+                    key={folder.id}
+                    className={`group relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br transition-transform duration-200 active:scale-95 ${style.gradient} ${style.glow} ${
+                      on ? "ring-2 ring-primary" : ""
+                    }`}
+                    onClick={() => setFilter(on ? "all" : f)}
+                  >
+                    <div
+                      className="animate-float mb-1.5 flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/10 backdrop-blur-md"
+                      style={{ animationDelay: style.delay }}
+                    >
+                      <span className={`material-symbols-outlined is-filled text-2xl ${style.iconColor}`}>
+                        {style.icon}
+                      </span>
+                    </div>
+                    <p className="px-1 text-center text-xs leading-tight font-bold text-white">
+                      {folderLabel(f)}
+                    </p>
+                    <span className="text-[8px] font-medium tracking-tighter text-white/60 uppercase">
+                      {count} {count === 1 ? "Track" : "Tracks"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Search */}
+          <input
+            ref={searchRef}
+            id="library-search"
+            className="mb-3 h-12 w-full rounded-xl border border-outline-dim bg-surface-glass px-4 text-on-surface transition-shadow duration-200 placeholder:text-on-surface-dim focus:ring-2 focus:ring-primary/20 focus:outline-none"
+            type="search"
+            placeholder="Search your audio…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search tracks"
+          />
+
+          {/* Folder chips */}
+          <nav className="mb-4 flex gap-3 overflow-x-auto pb-1" aria-label="Folders">
+            <button
+              className={`flex-none rounded-full px-4 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors duration-200 ${
+                filter === "all"
+                  ? "bg-primary text-on-primary"
+                  : "bg-surface-glass text-on-surface-dim hover:text-on-surface"
+              }`}
+              onClick={() => setFilter("all")}
+            >
+              All
+            </button>
+            {folders.map((f) => (
               <button
-                key={folder.id}
-                className={`group relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br transition-transform duration-200 active:scale-95 ${style.gradient} ${style.glow} ${
-                  on ? "ring-2 ring-primary" : ""
+                key={f.id}
+                className={`flex-none rounded-full px-4 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors duration-200 ${
+                  filter === f.name
+                    ? "bg-primary text-on-primary"
+                    : "bg-surface-glass text-on-surface-dim hover:text-on-surface"
                 }`}
-                onClick={() => setFilter(on ? "all" : f)}
+                onClick={() => setFilter(f.name)}
               >
-                <div
-                  className="animate-float mb-1.5 flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/10 backdrop-blur-md"
-                  style={{ animationDelay: style.delay }}
-                >
-                  <span className={`material-symbols-outlined is-filled text-2xl ${style.iconColor}`}>
-                    {style.icon}
-                  </span>
-                </div>
-                <p className="px-1 text-center text-xs leading-tight font-bold text-white">
-                  {folderLabel(f)}
-                </p>
-                <span className="text-[8px] font-medium tracking-tighter text-white/60 uppercase">
-                  {count} {count === 1 ? "Track" : "Tracks"}
-                </span>
+                {folderLabel(f.name)}
               </button>
-            );
-          })}
-        </div>
-      </div>
+            ))}
+          </nav>
+        </>
+      )}
 
-      {/* Search */}
-      <input
-        ref={searchRef}
-        id="library-search"
-        className="mb-3 h-12 w-full rounded-xl border border-outline-dim bg-surface-glass px-4 text-on-surface transition-shadow duration-200 placeholder:text-on-surface-dim focus:ring-2 focus:ring-primary/20 focus:outline-none"
-        type="search"
-        placeholder="Search your audio…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        aria-label="Search tracks"
-      />
-
-      {/* Folder chips */}
-      <nav className="mb-4 flex gap-3 overflow-x-auto pb-1" aria-label="Folders">
-        <button
-          className={`flex-none rounded-full px-4 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors duration-200 ${
-            filter === "all"
-              ? "bg-primary text-on-primary"
-              : "bg-surface-glass text-on-surface-dim hover:text-on-surface"
-          }`}
-          onClick={() => setFilter("all")}
-        >
-          All
-        </button>
-        {folders.map((f) => (
-          <button
-            key={f.id}
-            className={`flex-none rounded-full px-4 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors duration-200 ${
-              filter === f.name
-                ? "bg-primary text-on-primary"
-                : "bg-surface-glass text-on-surface-dim hover:text-on-surface"
-            }`}
-            onClick={() => setFilter(f.name)}
-          >
-            {folderLabel(f.name)}
-          </button>
-        ))}
-      </nav>
-
-      <h2 className="mb-3 text-xl font-bold tracking-tight text-on-surface">Recently Played</h2>
+      <h2 className="mb-3 text-xl font-bold tracking-tight text-on-surface">{heading}</h2>
 
       {visible.length === 0 && (
         <p className="px-3 py-8 text-center text-sm text-on-surface-dim">
           {tracks.length === 0
-            ? "Your shelf is empty. Upload your first audio below."
-            : "Nothing matches — try another folder or search."}
+            ? "Your shelf is empty. Upload your first audio from the menu."
+            : playedOnly
+              ? "Nothing played yet — open Library from the menu to browse and start listening."
+              : "Nothing matches — try another folder or search."}
         </p>
       )}
 

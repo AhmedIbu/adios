@@ -20,6 +20,7 @@ import {
   getCachedTrackList
 } from "./lib/offline";
 import type { Track } from "./lib/types";
+import { folderLabel } from "./lib/types";
 import { usePlayer } from "./hooks/usePlayer";
 import { Gate } from "./components/Gate";
 import { Library } from "./components/Library";
@@ -39,11 +40,20 @@ export default function App() {
   );
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [view, setView] = useState<"home" | "upload">("home");
+  const [libraryExpanded, setLibraryExpanded] = useState(false);
+  const [view, setView] = useState<"home" | "upload" | "browse">("home");
+  const [browseFolder, setBrowseFolder] = useState<string>("all");
 
   const goHome = useCallback(() => {
     setDrawerOpen(false);
     setView("home");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  const goBrowse = useCallback((folder: string) => {
+    setDrawerOpen(false);
+    setBrowseFolder(folder);
+    setView("browse");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
@@ -253,15 +263,56 @@ export default function App() {
           </span>
         </div>
         <div className="flex flex-col gap-1 px-3 py-2">
-          <button
-            className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-white/5 ${
-              view === "home" ? "text-primary" : "text-on-surface"
-            }`}
-            onClick={goHome}
-          >
-            <span className="material-symbols-outlined is-filled">library_music</span>
-            <span className="font-semibold">Library</span>
-          </button>
+          <div className="flex items-center rounded-xl hover:bg-white/5">
+            <button
+              className={`flex flex-1 items-center gap-3 px-3 py-3 text-left transition-colors ${
+                view === "home" ? "text-primary" : "text-on-surface"
+              }`}
+              onClick={goHome}
+            >
+              <span className="material-symbols-outlined is-filled">library_music</span>
+              <span className="font-semibold">Library</span>
+            </button>
+            <button
+              className="flex h-11 w-11 flex-none items-center justify-center text-on-surface-dim"
+              onClick={() => setLibraryExpanded((v) => !v)}
+              aria-label={libraryExpanded ? "Collapse folders" : "Expand folders"}
+              aria-expanded={libraryExpanded}
+            >
+              <span className="material-symbols-outlined">
+                {libraryExpanded ? "expand_less" : "expand_more"}
+              </span>
+            </button>
+          </div>
+
+          {libraryExpanded && (
+            <div className="ml-6 flex flex-col gap-0.5 border-l border-white/10 pl-3">
+              <button
+                className={`rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-white/5 ${
+                  view === "browse" && browseFolder === "all"
+                    ? "font-semibold text-primary"
+                    : "text-on-surface-dim"
+                }`}
+                onClick={() => goBrowse("all")}
+              >
+                All
+              </button>
+              {folders.map((f) => (
+                <button
+                  key={f.id}
+                  className={`rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-white/5 ${
+                    view === "browse" && browseFolder === f.name
+                      ? "font-semibold text-primary"
+                      : "text-on-surface-dim"
+                  }`}
+                  onClick={() => goBrowse(f.name)}
+                >
+                  {folderLabel(f.name)}
+                </button>
+              ))}
+            </div>
+          )}
+
           <button
             className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-white/5 ${
               view === "upload" ? "text-primary" : "text-on-surface"
@@ -275,8 +326,9 @@ export default function App() {
       </nav>
 
       <main className="animate-app-in space-y-6 px-4 pt-4">
-        {view === "home" ? (
+        {view === "home" && (
           <Library
+            playedOnly
             tracks={tracks}
             folders={folders}
             currentId={state.track?.id ?? null}
@@ -288,7 +340,25 @@ export default function App() {
             onDelete={handleDelete}
             onRename={handleRename}
           />
-        ) : (
+        )}
+        {view === "browse" && (
+          <Library
+            key={browseFolder}
+            playedOnly={false}
+            initialFilter={browseFolder}
+            tracks={tracks}
+            folders={folders}
+            currentId={state.track?.id ?? null}
+            offlineIds={offline}
+            savingOffline={saving}
+            onPlay={play}
+            onKeepOffline={handleKeepOffline}
+            onRemoveOffline={handleRemoveOffline}
+            onDelete={handleDelete}
+            onRename={handleRename}
+          />
+        )}
+        {view === "upload" && (
           <Upload
             folders={folders}
             onUploaded={(t) =>

@@ -96,7 +96,13 @@ export default function App() {
 
   return (
     <div className="mesh-gradient mx-auto min-h-dvh max-w-xl pb-44">
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-white/5 bg-bg/60 px-4 backdrop-blur-md">
+      <header
+        className="sticky top-0 z-30 flex items-center justify-between border-b border-white/5 bg-bg/60 px-4 backdrop-blur-md"
+        style={{
+          paddingTop: "env(safe-area-inset-top, 0px)",
+          height: "calc(3.5rem + env(safe-area-inset-top, 0px))"
+        }}
+      >
         <h1 className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-lg font-extrabold tracking-tight text-transparent">
           Hey Ibu 👋
         </h1>
@@ -146,7 +152,10 @@ export default function App() {
       />
 
       <nav className="fixed bottom-0 z-50 w-full border-t border-white/5 bg-bg/60 backdrop-blur-2xl">
-        <div className="mx-auto flex h-16 max-w-xl items-center justify-around px-4 pt-2 pb-[env(safe-area-inset-bottom,0px)]">
+        <div
+          className="mx-auto flex max-w-xl items-center justify-around px-4 pt-2"
+          style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom, 0px))" }}
+        >
           <button
             className="flex flex-col items-center justify-center text-primary transition-transform active:scale-90"
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}

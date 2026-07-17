@@ -12,11 +12,32 @@ interface Props {
 }
 
 const SPEEDS = [0.75, 1, 1.25, 1.5, 1.75, 2];
-const SLEEPS = [15, 30, 60];
+const SLEEPS = [5, 10, 15, 30, 45, 60];
 const WAVE_HEIGHTS = [10, 18, 26, 15, 22, 30, 14, 20];
+
+function SkipIcon({ direction }: { direction: "back" | "forward" }) {
+  return (
+    <span className="relative inline-flex h-7 w-7 items-center justify-center">
+      <svg
+        viewBox="0 0 24 24"
+        className={`h-7 w-7 ${direction === "back" ? "-scale-x-100" : ""}`}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M4 12a8 8 0 1 0 2.7-5.95" />
+        <polyline points="3 4 4 8.7 8.7 7.6" />
+      </svg>
+      <span className="absolute text-[8px] font-bold">15</span>
+    </span>
+  );
+}
 
 export function Player({ state, onToggle, onSeekBy, onSeekTo, onSpeed, onSleep }: Props) {
   const [open, setOpen] = useState(false);
+  const [sheet, setSheet] = useState<"speed" | "sleep" | null>(null);
   const { track, playing, time, duration, speed, sleepLeft } = state;
   if (!track) return null;
 
@@ -152,78 +173,46 @@ export function Player({ state, onToggle, onSeekBy, onSeekTo, onSpeed, onSleep }
             </div>
           </div>
 
-          <div className="mb-8 flex items-center justify-center gap-8">
+          <div className="flex items-center justify-between px-2">
             <button
-              className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-extrabold text-primary transition-colors hover:bg-surface-high active:scale-90"
+              className="rounded-full px-3 py-1.5 text-sm font-bold text-on-surface transition-colors hover:bg-surface-high active:scale-90"
+              onClick={() => setSheet("speed")}
+              aria-label="Playback speed"
+            >
+              {speed}×
+            </button>
+            <button
+              className="flex h-11 w-11 items-center justify-center rounded-full text-on-surface transition-colors hover:bg-surface-high active:scale-90"
               onClick={() => onSeekBy(-15)}
               aria-label="Back 15 seconds"
             >
-              −15s
+              <SkipIcon direction="back" />
             </button>
             <button
-              className="flex h-20 w-20 items-center justify-center rounded-full bg-primary text-on-primary shadow-lg shadow-black/30 transition-all hover:brightness-110 active:scale-95"
+              className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-black shadow-lg shadow-black/30 transition-all hover:brightness-95 active:scale-95"
               onClick={onToggle}
               aria-label={playing ? "Pause" : "Play"}
             >
-              <span className="material-symbols-outlined is-filled text-[44px]">
+              <span className="material-symbols-outlined is-filled text-[36px]">
                 {playing ? "pause" : "play_arrow"}
               </span>
             </button>
             <button
-              className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-extrabold text-primary transition-colors hover:bg-surface-high active:scale-90"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-on-surface transition-colors hover:bg-surface-high active:scale-90"
               onClick={() => onSeekBy(15)}
               aria-label="Forward 15 seconds"
             >
-              +15s
+              <SkipIcon direction="forward" />
             </button>
-          </div>
-
-          <div className="mb-6 flex items-center gap-3">
-            <span className="w-14 flex-none text-xs font-extrabold tracking-wide text-on-surface-dim uppercase">
-              Speed
-            </span>
-            <div className="flex flex-wrap gap-1.5">
-              {SPEEDS.map((s) => (
-                <button
-                  key={s}
-                  className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
-                    speed === s
-                      ? "bg-primary text-on-primary"
-                      : "bg-surface-high text-on-surface-dim"
-                  }`}
-                  onClick={() => onSpeed(s)}
-                >
-                  {s}×
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="w-14 flex-none text-xs font-extrabold tracking-wide text-on-surface-dim uppercase">
-              Sleep
-            </span>
-            <div className="flex flex-wrap gap-1.5">
-              {SLEEPS.map((m) => (
-                <button
-                  key={m}
-                  className="rounded-full bg-surface-high px-3 py-1.5 text-xs font-bold text-on-surface-dim transition-colors"
-                  onClick={() => onSleep(m)}
-                >
-                  {m}m
-                </button>
-              ))}
-              <button
-                className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
-                  sleepLeft === null
-                    ? "bg-primary text-on-primary"
-                    : "bg-surface-high text-on-surface-dim"
-                }`}
-                onClick={() => onSleep(null)}
-              >
-                off
-              </button>
-            </div>
+            <button
+              className={`flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-surface-high active:scale-90 ${
+                sleepLeft !== null ? "text-primary" : "text-on-surface"
+              }`}
+              onClick={() => setSheet("sleep")}
+              aria-label="Sleep timer"
+            >
+              <span className="material-symbols-outlined text-2xl">timer</span>
+            </button>
           </div>
           {sleepLeft !== null && (
             <p className="mt-3 text-center text-xs text-primary">
@@ -232,6 +221,94 @@ export function Player({ state, onToggle, onSeekBy, onSeekTo, onSpeed, onSleep }
           )}
         </div>
       </div>
+
+      {/* Speed bottom sheet */}
+      {sheet && (
+        <div
+          className="fixed inset-0 z-[90] flex items-end bg-black/50 backdrop-blur-sm"
+          onClick={() => setSheet(null)}
+        >
+          <div
+            className="mx-auto w-full max-w-xl rounded-t-3xl bg-[#1a1a1a] pb-[calc(env(safe-area-inset-bottom,0px)+24px)] shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="h-1 w-10 rounded-full bg-white/20" />
+            </div>
+
+            {sheet === "speed" ? (
+              <>
+                <h3 className="py-3 text-center text-base font-semibold text-on-surface">Speed</h3>
+                <p className="mb-4 text-center text-3xl font-bold text-on-surface">{speed}×</p>
+                <input
+                  type="range"
+                  min={0.5}
+                  max={2}
+                  step={0.05}
+                  value={speed}
+                  onChange={(e) => onSpeed(Number(e.target.value))}
+                  aria-label="Playback speed slider"
+                  className="mx-6 w-[calc(100%-3rem)]"
+                  style={{ accentColor: "#fff" }}
+                />
+                <div className="mx-6 mb-4 flex justify-between text-[11px] text-on-surface-dim">
+                  <span>0.5</span>
+                  <span>1</span>
+                  <span>1.5</span>
+                  <span>2</span>
+                </div>
+                <div className="mb-2 flex items-center justify-center gap-2 px-6 pb-4">
+                  {SPEEDS.map((s) => (
+                    <button
+                      key={s}
+                      className={`flex-1 rounded-full py-2.5 text-sm font-bold transition-colors ${
+                        speed === s ? "bg-white text-black" : "bg-white/10 text-on-surface"
+                      }`}
+                      onClick={() => onSpeed(s)}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="py-3 text-center text-base font-semibold text-on-surface">
+                  Sleep timer
+                </h3>
+                <ul className="pb-2">
+                  {sleepLeft !== null && (
+                    <li>
+                      <button
+                        className="flex w-full items-center justify-center px-6 py-4 text-base font-semibold text-error"
+                        onClick={() => {
+                          onSleep(null);
+                          setSheet(null);
+                        }}
+                      >
+                        Turn off timer
+                      </button>
+                    </li>
+                  )}
+                  {SLEEPS.map((m) => (
+                    <li key={m}>
+                      <button
+                        className="flex w-full items-center justify-center px-6 py-4 text-base text-on-surface hover:bg-white/5"
+                        onClick={() => {
+                          onSleep(m);
+                          setSheet(null);
+                        }}
+                      >
+                        {m < 60 ? `${m} minutes` : "1 hour"}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }

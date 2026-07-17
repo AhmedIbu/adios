@@ -14,10 +14,12 @@ interface Props {
   onRemoveOffline: (t: Track) => void;
   onDelete: (t: Track) => void;
   onRename: (t: Track, title: string) => void;
-  /** Home mode: only tracks with a play history, no search/folder-grid chrome. */
+  /** Home mode: only tracks with a play history; folder tiles jump to Browse instead of filtering in place. */
   playedOnly: boolean;
   /** Browse mode: starting folder filter, set from the sidebar's Library dropdown. */
   initialFilter?: Folder | "all";
+  /** Home mode only: navigate to a full Browse view for this folder. */
+  onBrowseFolder?: (folder: string) => void;
 }
 
 const OFFLINE_DURATIONS: { label: string; ms: number | null }[] = [
@@ -134,7 +136,8 @@ export function Library({
   onDelete,
   onRename,
   playedOnly,
-  initialFilter
+  initialFilter,
+  onBrowseFolder
 }: Props) {
   const [filter, setFilter] = useState<Folder | "all">(initialFilter ?? "all");
   const [query, setQuery] = useState("");
@@ -178,45 +181,45 @@ export function Library({
 
   return (
     <section>
+      {/* Folder quick-access grid */}
+      <div className="mb-6">
+        <h2 className="mb-3 text-xl font-bold tracking-tight text-on-surface">Folders</h2>
+        <div className="grid grid-cols-3 gap-3">
+          {folders.map((folder) => {
+            const f = folder.name;
+            const style = styleFor(f);
+            const count = tracks.filter((t) => t.folder === f).length;
+            const on = filter === f;
+            return (
+              <button
+                key={folder.id}
+                className={`group relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br transition-transform duration-200 active:scale-95 ${style.gradient} ${style.glow} ${
+                  on ? "ring-2 ring-primary" : ""
+                }`}
+                onClick={() => (playedOnly ? onBrowseFolder?.(f) : setFilter(on ? "all" : f))}
+              >
+                <div
+                  className="animate-float mb-1.5 flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/10 backdrop-blur-md"
+                  style={{ animationDelay: style.delay }}
+                >
+                  <span className={`material-symbols-outlined is-filled text-2xl ${style.iconColor}`}>
+                    {style.icon}
+                  </span>
+                </div>
+                <p className="px-1 text-center text-xs leading-tight font-bold text-white">
+                  {folderLabel(f)}
+                </p>
+                <span className="text-[8px] font-medium tracking-tighter text-white/60 uppercase">
+                  {count} {count === 1 ? "Track" : "Tracks"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {!playedOnly && (
         <>
-          {/* Folder quick-access grid */}
-          <div className="mb-6">
-            <h2 className="mb-3 text-xl font-bold tracking-tight text-on-surface">Folders</h2>
-            <div className="grid grid-cols-3 gap-3">
-              {folders.map((folder) => {
-                const f = folder.name;
-                const style = styleFor(f);
-                const count = tracks.filter((t) => t.folder === f).length;
-                const on = filter === f;
-                return (
-                  <button
-                    key={folder.id}
-                    className={`group relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br transition-transform duration-200 active:scale-95 ${style.gradient} ${style.glow} ${
-                      on ? "ring-2 ring-primary" : ""
-                    }`}
-                    onClick={() => setFilter(on ? "all" : f)}
-                  >
-                    <div
-                      className="animate-float mb-1.5 flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/10 backdrop-blur-md"
-                      style={{ animationDelay: style.delay }}
-                    >
-                      <span className={`material-symbols-outlined is-filled text-2xl ${style.iconColor}`}>
-                        {style.icon}
-                      </span>
-                    </div>
-                    <p className="px-1 text-center text-xs leading-tight font-bold text-white">
-                      {folderLabel(f)}
-                    </p>
-                    <span className="text-[8px] font-medium tracking-tighter text-white/60 uppercase">
-                      {count} {count === 1 ? "Track" : "Tracks"}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           {/* Search */}
           <input
             ref={searchRef}

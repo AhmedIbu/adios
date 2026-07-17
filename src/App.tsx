@@ -329,6 +329,7 @@ export default function App() {
         {view === "home" && (
           <Library
             playedOnly
+            onBrowseFolder={goBrowse}
             tracks={tracks}
             folders={folders}
             currentId={state.track?.id ?? null}

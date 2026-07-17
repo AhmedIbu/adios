@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Track, Folder } from "../lib/types";
-import { FOLDERS, fmtTime } from "../lib/types";
+import { FOLDERS, FOLDER_LABELS, fmtTime } from "../lib/types";
 
 interface Props {
   tracks: Track[];
@@ -23,21 +23,52 @@ const FOLDER_STYLE: Record<
     iconColor: "text-primary",
     delay: "0s"
   },
-  lectures: {
-    icon: "school",
+  "beginning-to-the-end": {
+    icon: "auto_stories",
     gradient: "from-[#513c71] to-[#250f43]",
     glow: "shadow-[0_4px_20px_-5px_rgba(213,187,249,0.3)]",
     iconColor: "text-secondary",
-    delay: "0.5s"
+    delay: "0.2s"
+  },
+  "emotional-reminders": {
+    icon: "favorite",
+    gradient: "from-[#7a3b56] to-[#3d1a2b]",
+    glow: "shadow-[0_4px_20px_-5px_rgba(240,150,180,0.3)]",
+    iconColor: "text-[#f0a8bf]",
+    delay: "0.4s"
+  },
+  "lessons-from-quran": {
+    icon: "menu_book",
+    gradient: "from-[#2e6355] to-[#0f2e26]",
+    glow: "shadow-[0_4px_20px_-5px_rgba(120,210,180,0.3)]",
+    iconColor: "text-[#78d2b4]",
+    delay: "0.6s"
+  },
+  "motivational-reminders": {
+    icon: "bolt",
+    gradient: "from-[#7a5a2e] to-[#3d2a0f]",
+    glow: "shadow-[0_4px_20px_-5px_rgba(253,201,127,0.3)]",
+    iconColor: "text-tertiary",
+    delay: "0.8s"
+  },
+  "powerful-reminders": {
+    icon: "local_fire_department",
+    gradient: "from-[#7a2e2e] to-[#3d0f0f]",
+    glow: "shadow-[0_4px_20px_-5px_rgba(255,150,150,0.3)]",
+    iconColor: "text-[#ff9696]",
+    delay: "1s"
   },
   notes: {
     icon: "description",
     gradient: "from-[#624000] to-[#291800]",
     glow: "shadow-[0_4px_20px_-5px_rgba(241,190,117,0.3)]",
     iconColor: "text-tertiary",
-    delay: "1s"
+    delay: "1.2s"
   }
 };
+
+const ALL_FOLDERS = FOLDERS.filter((f) => f.id !== "all").map((f) => f.id as Folder);
+const PAGE_SIZE = 5;
 
 export function Library({
   tracks,
@@ -51,6 +82,7 @@ export function Library({
   const [filter, setFilter] = useState<Folder | "all">("all");
   const [query, setQuery] = useState("");
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -60,11 +92,16 @@ export function Library({
     return () => document.removeEventListener("click", close);
   }, [openMenu]);
 
+  useEffect(() => {
+    setShowAll(false);
+  }, [filter, query]);
+
   const visible = tracks.filter(
     (t) =>
       (filter === "all" || t.folder === filter) &&
       t.title.toLowerCase().includes(query.toLowerCase())
   );
+  const displayed = showAll ? visible : visible.slice(0, PAGE_SIZE);
 
   return (
     <section>
@@ -72,7 +109,7 @@ export function Library({
       <div className="mb-6">
         <h2 className="mb-3 text-xl font-bold tracking-tight text-on-surface">Folders</h2>
         <div className="grid grid-cols-3 gap-3">
-          {(["music", "lectures", "notes"] as Folder[]).map((f) => {
+          {ALL_FOLDERS.map((f) => {
             const style = FOLDER_STYLE[f];
             const count = tracks.filter((t) => t.folder === f).length;
             const on = filter === f;
@@ -92,7 +129,9 @@ export function Library({
                     {style.icon}
                   </span>
                 </div>
-                <p className="text-xs font-bold tracking-wide text-white capitalize">{f}</p>
+                <p className="px-1 text-center text-xs leading-tight font-bold text-white">
+                  {FOLDER_LABELS[f]}
+                </p>
                 <span className="text-[8px] font-medium tracking-tighter text-white/60 uppercase">
                   {count} {count === 1 ? "Track" : "Tracks"}
                 </span>
@@ -119,7 +158,7 @@ export function Library({
         {FOLDERS.map((f) => (
           <button
             key={f.id}
-            className={`flex-none rounded-full px-4 py-1.5 text-xs font-semibold transition-colors duration-200 ${
+            className={`flex-none rounded-full px-4 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors duration-200 ${
               filter === f.id
                 ? "bg-primary text-on-primary"
                 : "bg-surface-glass text-on-surface-dim hover:text-on-surface"
@@ -142,7 +181,7 @@ export function Library({
       )}
 
       <ul className="flex flex-col gap-2">
-        {visible.map((t) => {
+        {displayed.map((t) => {
           const style = FOLDER_STYLE[t.folder];
           const kept = offlineIds.has(t.id);
           const saving = savingOffline.has(t.id);
@@ -152,8 +191,8 @@ export function Library({
             <li
               key={t.id}
               className={`relative flex items-center gap-3 rounded-2xl border p-2.5 backdrop-blur-md transition-colors duration-200 ${
-                isCurrent ? "border-primary/50 bg-white/8" : "border-white/8 bg-white/3"
-              }`}
+                menuOpen ? "z-30" : "z-0"
+              } ${isCurrent ? "border-primary/50 bg-white/8" : "border-white/8 bg-white/3"}`}
             >
               <button
                 className={`group relative flex h-12 w-12 flex-none items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br shadow-lg ${style.gradient}`}
@@ -179,8 +218,8 @@ export function Library({
                   >
                     {kept ? "offline_pin" : "download"}
                   </span>
-                  <p className="text-[10px] font-medium tracking-tighter text-on-surface-dim/80 uppercase">
-                    {fmtTime(t.duration)} · {t.folder}
+                  <p className="truncate text-[10px] font-medium tracking-tighter text-on-surface-dim/80 uppercase">
+                    {fmtTime(t.duration)} · {FOLDER_LABELS[t.folder]}
                     {t.position > 5 && t.duration - t.position > 5 && (
                       <> · resume {fmtTime(t.position)}</>
                     )}
@@ -233,6 +272,15 @@ export function Library({
           );
         })}
       </ul>
+
+      {!showAll && visible.length > PAGE_SIZE && (
+        <button
+          className="mt-3 w-full rounded-xl bg-surface-glass py-3 text-sm font-semibold text-primary transition-colors hover:bg-white/10"
+          onClick={() => setShowAll(true)}
+        >
+          Show all {visible.length} tracks
+        </button>
+      )}
     </section>
   );
 }

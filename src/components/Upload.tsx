@@ -1,6 +1,9 @@
 import { useRef, useState } from "react";
 import type { Folder, Track } from "../lib/types";
+import { FOLDERS, FOLDER_LABELS } from "../lib/types";
 import { uploadTrack } from "../lib/supabase";
+
+const UPLOAD_FOLDERS = FOLDERS.filter((f) => f.id !== "all") as { id: Folder; label: string }[];
 
 interface Props {
   onUploaded: (t: Track) => void;
@@ -25,7 +28,7 @@ function probeDuration(file: File): Promise<number> {
 
 export function Upload({ onUploaded }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [folder, setFolder] = useState<Folder>("lectures");
+  const [folder, setFolder] = useState<Folder>("music");
   const [queue, setQueue] = useState<string[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,13 +65,15 @@ export function Upload({ onUploaded }: Props) {
         <div className="relative">
           <select
             id="upload-folder"
-            className="h-14 w-full appearance-none rounded-xl border border-outline-dim bg-surface-glass px-4 text-on-surface capitalize transition-shadow focus:ring-2 focus:ring-primary/20 focus:outline-none"
+            className="h-14 w-full appearance-none rounded-xl border border-outline-dim bg-surface-glass px-4 text-on-surface transition-shadow focus:ring-2 focus:ring-primary/20 focus:outline-none"
             value={folder}
             onChange={(e) => setFolder(e.target.value as Folder)}
           >
-            <option value="music">Music</option>
-            <option value="lectures">Lectures</option>
-            <option value="notes">Notes</option>
+            {UPLOAD_FOLDERS.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.label}
+              </option>
+            ))}
           </select>
           <span className="material-symbols-outlined pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-on-surface-dim">
             expand_more
@@ -96,7 +101,7 @@ export function Upload({ onUploaded }: Props) {
           upload_file
         </span>
         <p className="px-8 text-center text-sm font-medium text-on-surface-dim">
-          Tap to select, or drop audio into “{folder}”
+          Tap to select, or drop audio into “{FOLDER_LABELS[folder]}”
         </p>
         <p className="mt-1 text-xs text-outline">MP3, M4A, WAV, FLAC…</p>
         <input

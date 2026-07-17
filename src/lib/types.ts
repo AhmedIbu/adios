@@ -1,4 +1,11 @@
-export type Folder = "music" | "lectures" | "notes";
+export type Folder =
+  | "music"
+  | "beginning-to-the-end"
+  | "emotional-reminders"
+  | "lessons-from-quran"
+  | "motivational-reminders"
+  | "powerful-reminders"
+  | "notes";
 
 export interface Track {
   id: string;
@@ -11,11 +18,25 @@ export interface Track {
   created_at: string;
 }
 
+export const FOLDER_LABELS: Record<Folder, string> = {
+  music: "Music",
+  "beginning-to-the-end": "Beginning to the End",
+  "emotional-reminders": "Emotional Reminders",
+  "lessons-from-quran": "Lessons from Quran",
+  "motivational-reminders": "Motivational Reminders",
+  "powerful-reminders": "Powerful Reminders",
+  notes: "Notes"
+};
+
 export const FOLDERS: { id: Folder | "all"; label: string }[] = [
   { id: "all", label: "All" },
-  { id: "music", label: "Music" },
-  { id: "lectures", label: "Lectures" },
-  { id: "notes", label: "Notes" }
+  { id: "music", label: FOLDER_LABELS.music },
+  { id: "beginning-to-the-end", label: FOLDER_LABELS["beginning-to-the-end"] },
+  { id: "emotional-reminders", label: FOLDER_LABELS["emotional-reminders"] },
+  { id: "lessons-from-quran", label: FOLDER_LABELS["lessons-from-quran"] },
+  { id: "motivational-reminders", label: FOLDER_LABELS["motivational-reminders"] },
+  { id: "powerful-reminders", label: FOLDER_LABELS["powerful-reminders"] },
+  { id: "notes", label: FOLDER_LABELS.notes }
 ];
 
 export function fmtTime(s: number): string {

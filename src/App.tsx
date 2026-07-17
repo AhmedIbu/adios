@@ -25,6 +25,7 @@ export default function App() {
   const [theme, setTheme] = useState<Theme>(
     () => (localStorage.getItem("theme") as Theme) || "dark"
   );
+  const [showBackToTop, setShowBackToTop] = useState(false);
 
   const { state, play, toggle, seekBy, seekTo, setSpeed, setSleep } = usePlayer();
 
@@ -32,6 +33,12 @@ export default function App() {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem("theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    const onScroll = () => setShowBackToTop(window.scrollY > 400);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -150,6 +157,18 @@ export default function App() {
         onSpeed={setSpeed}
         onSleep={setSleep}
       />
+
+      <button
+        className={`fixed right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-primary text-on-primary shadow-lg shadow-black/30 transition-all duration-200 ease-brand active:scale-90 ${
+          showBackToTop ? "opacity-100" : "pointer-events-none translate-y-2 opacity-0"
+        }`}
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 9.5rem)" }}
+        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        aria-label="Back to top"
+        title="Back to top"
+      >
+        <span className="material-symbols-outlined text-2xl">arrow_upward</span>
+      </button>
 
       <nav className="fixed bottom-0 z-50 w-full border-t border-white/5 bg-bg/60 backdrop-blur-2xl">
         <div

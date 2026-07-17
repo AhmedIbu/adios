@@ -5,6 +5,7 @@ import {
   listTracks,
   deleteTrack,
   renameTrack,
+  markPlayed,
   seedDefaultFoldersIfEmpty,
   createFolder,
   renameFolder,
@@ -38,18 +39,35 @@ export default function App() {
   );
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [view, setView] = useState<"home" | "upload">("home");
 
-  const goTo = useCallback((id: string | null) => {
+  const goHome = useCallback(() => {
     setDrawerOpen(false);
-    if (id === null) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    if (id === "library-search") document.getElementById(id)?.focus();
+    setView("home");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  const { state, play, toggle, seekBy, seekTo, setSpeed, setSleep } = usePlayer();
+  const goUpload = useCallback(() => {
+    setDrawerOpen(false);
+    setView("upload");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  const { state, play: playTrack, toggle, seekBy, seekTo, setSpeed, setSleep } = usePlayer();
+
+  const play = useCallback(
+    (t: Track) => {
+      markPlayed(t.id).catch((e) => console.error(e));
+      const playedAt = new Date().toISOString();
+      setTracks((ts) => {
+        const next = ts.map((x) => (x.id === t.id ? { ...x, last_played_at: playedAt } : x));
+        cacheTrackList(next);
+        return next;
+      });
+      playTrack(t);
+    },
+    [playTrack]
+  );
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -236,44 +254,41 @@ export default function App() {
         </div>
         <div className="flex flex-col gap-1 px-3 py-2">
           <button
-            className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-on-surface transition-colors hover:bg-white/5"
-            onClick={() => goTo(null)}
+            className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-white/5 ${
+              view === "home" ? "text-primary" : "text-on-surface"
+            }`}
+            onClick={goHome}
           >
-            <span className="material-symbols-outlined is-filled text-primary">library_music</span>
+            <span className="material-symbols-outlined is-filled">library_music</span>
             <span className="font-semibold">Library</span>
           </button>
           <button
-            className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-on-surface transition-colors hover:bg-white/5"
-            onClick={() => goTo("library-search")}
+            className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-white/5 ${
+              view === "upload" ? "text-primary" : "text-on-surface"
+            }`}
+            onClick={goUpload}
           >
-            <span className="material-symbols-outlined text-primary">search</span>
-            <span className="font-semibold">Search</span>
-          </button>
-          <button
-            className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-on-surface transition-colors hover:bg-white/5"
-            onClick={() => goTo("upload-section")}
-          >
-            <span className="material-symbols-outlined text-primary">upload_file</span>
+            <span className="material-symbols-outlined">upload_file</span>
             <span className="font-semibold">Upload</span>
           </button>
         </div>
       </nav>
 
       <main className="animate-app-in space-y-6 px-4 pt-4">
-        <Library
-          tracks={tracks}
-          folders={folders}
-          currentId={state.track?.id ?? null}
-          offlineIds={offline}
-          savingOffline={saving}
-          onPlay={play}
-          onKeepOffline={handleKeepOffline}
-          onRemoveOffline={handleRemoveOffline}
-          onDelete={handleDelete}
-          onRename={handleRename}
-        />
-
-        <div id="upload-section">
+        {view === "home" ? (
+          <Library
+            tracks={tracks}
+            folders={folders}
+            currentId={state.track?.id ?? null}
+            offlineIds={offline}
+            savingOffline={saving}
+            onPlay={play}
+            onKeepOffline={handleKeepOffline}
+            onRemoveOffline={handleRemoveOffline}
+            onDelete={handleDelete}
+            onRename={handleRename}
+          />
+        ) : (
           <Upload
             folders={folders}
             onUploaded={(t) =>
@@ -287,7 +302,7 @@ export default function App() {
             onRenameFolder={handleRenameFolder}
             onDeleteFolder={handleDeleteFolder}
           />
-        </div>
+        )}
       </main>
 
       <Player

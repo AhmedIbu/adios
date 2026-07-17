@@ -66,6 +66,10 @@ export async function savePosition(id: string, position: number): Promise<void> 
   await supabase.from("tracks").update({ position }).eq("id", id);
 }
 
+export async function markPlayed(id: string): Promise<void> {
+  await supabase.from("tracks").update({ last_played_at: new Date().toISOString() }).eq("id", id);
+}
+
 export async function deleteTrack(t: Track): Promise<void> {
   await supabase.storage.from("audio").remove([t.storage_path]);
   await supabase.from("tracks").delete().eq("id", t.id);

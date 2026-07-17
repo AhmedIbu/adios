@@ -155,11 +155,20 @@ export function Library({
     setShowAll(false);
   }, [filter, query]);
 
-  const visible = tracks.filter(
-    (t) =>
-      (filter === "all" || t.folder === filter) &&
-      t.title.toLowerCase().includes(query.toLowerCase())
-  );
+  const visible = tracks
+    .filter(
+      (t) =>
+        (filter === "all" || t.folder === filter) &&
+        t.title.toLowerCase().includes(query.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (a.last_played_at && b.last_played_at) {
+        return new Date(b.last_played_at).getTime() - new Date(a.last_played_at).getTime();
+      }
+      if (a.last_played_at) return -1;
+      if (b.last_played_at) return 1;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
   const displayed = showAll ? visible : visible.slice(0, PAGE_SIZE);
 
   return (
@@ -240,7 +249,7 @@ export function Library({
         ))}
       </nav>
 
-      <h2 className="mb-3 text-xl font-bold tracking-tight text-on-surface">Recent Tracks</h2>
+      <h2 className="mb-3 text-xl font-bold tracking-tight text-on-surface">Recently Played</h2>
 
       {visible.length === 0 && (
         <p className="px-3 py-8 text-center text-sm text-on-surface-dim">

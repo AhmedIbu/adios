@@ -10,6 +10,7 @@ export interface Track {
   storage_path: string;
   created_at: string;
   last_played_at: string | null;
+  sort_order: number | null;
 }
 
 export const DEFAULT_FOLDERS = [

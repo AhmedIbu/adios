@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import type { PlayerState } from "../hooks/usePlayer";
 import { fmtTime } from "../lib/types";
+import { vibrate } from "../lib/haptics";
 
 interface Props {
   state: PlayerState;
@@ -80,8 +81,13 @@ export function Player({
   function onPointerUp() {
     if (!dragging.current) return;
     dragging.current = false;
-    if (dragX <= -SWIPE_THRESHOLD) onNext();
-    else if (dragX >= SWIPE_THRESHOLD) onPrev();
+    if (dragX <= -SWIPE_THRESHOLD) {
+      vibrate(15);
+      onNext();
+    } else if (dragX >= SWIPE_THRESHOLD) {
+      vibrate(15);
+      onPrev();
+    }
     setDragX(0);
   }
 

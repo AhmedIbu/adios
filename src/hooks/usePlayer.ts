@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import type { Track } from "../lib/types";
 import { playableUrl } from "../lib/offline";
 import { savePosition } from "../lib/supabase";
+import { vibrate } from "../lib/haptics";
 
 export type LoopMode = "off" | "all" | "one";
 
@@ -85,6 +86,7 @@ export function usePlayer(onTrackChange?: (t: Track) => void) {
             a.pause();
             sleepUntilRef.current = null;
             setState((s) => ({ ...s, sleepLeft: null }));
+            vibrate([30, 50, 30]);
           }
         }
       });
@@ -251,6 +253,7 @@ export function usePlayer(onTrackChange?: (t: Track) => void) {
   const toggle = useCallback(() => {
     const a = audio();
     if (!a.src) return;
+    vibrate(10);
     a.paused ? a.play() : a.pause();
   }, [audio]);
 

@@ -5,7 +5,9 @@ import {
   listTracks,
   deleteTrack,
   renameTrack,
+  reorderTrack,
   markPlayed,
+  getStorageUsage,
   seedDefaultFoldersIfEmpty,
   createFolder,
   renameFolder,
@@ -43,6 +45,7 @@ export default function App() {
   const [libraryExpanded, setLibraryExpanded] = useState(false);
   const [view, setView] = useState<"home" | "upload" | "browse">("home");
   const [browseFolder, setBrowseFolder] = useState<string>("all");
+  const [storageBytes, setStorageBytes] = useState<number | null>(null);
 
   const goHome = useCallback(() => {
     setDrawerOpen(false);
@@ -128,6 +131,9 @@ export default function App() {
     seedDefaultFoldersIfEmpty()
       .then(setFolders)
       .catch((e) => console.error(e));
+    getStorageUsage()
+      .then(setStorageBytes)
+      .catch((e) => console.error(e));
   }, [session]);
 
   const handleKeepOffline = useCallback(async (t: Track, durationMs: number | null) => {
@@ -166,6 +172,20 @@ export default function App() {
     }
   }, []);
 
+  const handleReorder = useCallback(async (t: Track, sortOrder: number) => {
+    setTracks((ts) => {
+      const next = ts.map((x) => (x.id === t.id ? { ...x, sort_order: sortOrder } : x));
+      cacheTrackList(next);
+      return next;
+    });
+    try {
+      await reorderTrack(t.id, sortOrder);
+    } catch (e) {
+      console.error(e);
+      alert("Couldn't save the new order — check your connection.");
+    }
+  }, []);
+
   const handleDelete = useCallback(async (t: Track) => {
     if (!confirm(`Delete “${t.title}” everywhere (cloud + offline)?`)) return;
     await deleteTrack(t);
@@ -176,6 +196,9 @@ export default function App() {
       return next;
     });
     setOffline(await loadOfflineIds());
+    getStorageUsage()
+      .then(setStorageBytes)
+      .catch((e) => console.error(e));
   }, []);
 
   const handleCreateFolder = useCallback(async (name: string) => {
@@ -340,6 +363,34 @@ export default function App() {
             <span className="font-semibold">Upload</span>
           </button>
         </div>
+
+        <div className="mt-auto px-6 pb-6">
+          {storageBytes !== null && (
+            <>
+              {(() => {
+                const cap = 1_000_000_000; // Supabase free tier: 1 GB
+                const pct = Math.min(100, (storageBytes / cap) * 100);
+                const usedMb = (storageBytes / 1_000_000).toFixed(0);
+                const capMb = (cap / 1_000_000).toFixed(0);
+                return (
+                  <>
+                    <div className="mb-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          pct > 90 ? "bg-error" : "bg-primary"
+                        }`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-on-surface-dim">
+                      {usedMb} MB / {capMb} MB used
+                    </p>
+                  </>
+                );
+              })()}
+            </>
+          )}
+        </div>
       </nav>
 
       <main className="animate-app-in space-y-6 px-4 pt-4">
@@ -374,18 +425,22 @@ export default function App() {
             onRemoveOffline={handleRemoveOffline}
             onDelete={handleDelete}
             onRename={handleRename}
+            onReorder={handleReorder}
           />
         )}
         {view === "upload" && (
           <Upload
             folders={folders}
-            onUploaded={(t) =>
+            onUploaded={(t) => {
               setTracks((ts) => {
                 const next = [t, ...ts];
                 cacheTrackList(next);
                 return next;
-              })
-            }
+              });
+              getStorageUsage()
+                .then(setStorageBytes)
+                .catch((e) => console.error(e));
+            }}
             onCreateFolder={handleCreateFolder}
             onRenameFolder={handleRenameFolder}
             onDeleteFolder={handleDeleteFolder}

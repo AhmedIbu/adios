@@ -14,6 +14,8 @@ interface Props {
   onRemoveOffline: (t: Track) => void;
   onDelete: (t: Track) => void;
   onRename: (t: Track, title: string) => void;
+  /** Browse mode only: persist a track's new position within its folder. */
+  onReorder?: (t: Track, sortOrder: number) => void;
   /** Home mode: only tracks with a play history; folder tiles jump to Browse instead of filtering in place. */
   playedOnly: boolean;
   /** Browse mode: starting folder filter, set from the sidebar's Library dropdown. */
@@ -135,6 +137,7 @@ export function Library({
   onRemoveOffline,
   onDelete,
   onRename,
+  onReorder,
   playedOnly,
   initialFilter,
   onBrowseFolder
@@ -147,6 +150,14 @@ export function Library({
   const [renaming, setRenaming] = useState<Track | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
+
+  // Drag-to-reorder (Browse mode, single folder only — query.length===0 keeps
+  // the dragged list's positions meaningful against the real folder order).
+  const canReorder = !playedOnly && filter !== "all" && query.length === 0 && !!onReorder;
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+  const rowRefs = useRef<Map<string, HTMLLIElement>>(new Map());
+  const rowRectsRef = useRef<{ id: string; top: number; height: number }[]>([]);
 
   useEffect(() => {
     if (!openMenu) return;
@@ -171,13 +182,91 @@ export function Library({
         (filter === "all" || t.folder === filter) &&
         t.title.toLowerCase().includes(query.toLowerCase())
     )
-    .sort((a, b) =>
-      playedOnly
-        ? new Date(b.last_played_at!).getTime() - new Date(a.last_played_at!).getTime()
-        : new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-  const displayed = showAll ? visible : visible.slice(0, PAGE_SIZE);
+    .sort((a, b) => {
+      if (playedOnly) {
+        return new Date(b.last_played_at!).getTime() - new Date(a.last_played_at!).getTime();
+      }
+      if (filter !== "all" && a.sort_order !== null && b.sort_order !== null) {
+        return a.sort_order - b.sort_order;
+      }
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  // Reordering only makes sense against the full folder, not a paginated slice.
+  const displayed = canReorder || showAll ? visible : visible.slice(0, PAGE_SIZE);
   const heading = playedOnly ? "Recently Played" : filter === "all" ? "All Tracks" : folderLabel(filter);
+
+  const rows =
+    dragId !== null && overIndex !== null
+      ? (() => {
+          const fromIdx = displayed.findIndex((t) => t.id === dragId);
+          if (fromIdx === -1) return displayed;
+          const next = [...displayed];
+          const [item] = next.splice(fromIdx, 1);
+          next.splice(overIndex, 0, item);
+          return next;
+        })()
+      : displayed;
+
+  function beginDrag(id: string) {
+    rowRectsRef.current = displayed.map((t) => {
+      const el = rowRefs.current.get(t.id);
+      const rect = el?.getBoundingClientRect();
+      return { id: t.id, top: rect?.top ?? 0, height: rect?.height ?? 0 };
+    });
+    setDragId(id);
+    setOverIndex(displayed.findIndex((t) => t.id === id));
+  }
+
+  function dragMove(clientY: number) {
+    const rects = rowRectsRef.current;
+    let idx = rects.length - 1;
+    for (let i = 0; i < rects.length; i++) {
+      if (clientY < rects[i].top + rects[i].height / 2) {
+        idx = i;
+        break;
+      }
+    }
+    setOverIndex(idx);
+  }
+
+  function endDrag() {
+    if (dragId !== null && onReorder) {
+      const finalTrack = displayed.find((t) => t.id === dragId);
+      const pos = rows.findIndex((t) => t.id === dragId);
+      if (finalTrack && pos !== -1) {
+        const prevOrder = rows[pos - 1]?.sort_order ?? null;
+        const nextOrder = rows[pos + 1]?.sort_order ?? null;
+        let newOrder: number;
+        if (prevOrder !== null && nextOrder !== null) newOrder = (prevOrder + nextOrder) / 2;
+        else if (prevOrder !== null) newOrder = prevOrder + 1;
+        else if (nextOrder !== null) newOrder = nextOrder - 1;
+        else newOrder = 0;
+        onReorder(finalTrack, newOrder);
+      }
+    }
+    setDragId(null);
+    setOverIndex(null);
+  }
+
+  const dragMoveRef = useRef(dragMove);
+  dragMoveRef.current = dragMove;
+  const endDragRef = useRef(endDrag);
+  endDragRef.current = endDrag;
+
+  useEffect(() => {
+    if (dragId === null) return;
+    const onMove = (e: PointerEvent) => dragMoveRef.current(e.clientY);
+    const onUp = () => endDragRef.current();
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragId]);
 
   return (
     <section>
@@ -274,19 +363,36 @@ export function Library({
       )}
 
       <ul className="flex flex-col gap-2">
-        {displayed.map((t) => {
+        {rows.map((t) => {
           const style = styleFor(t.folder);
           const kept = offlineIds.has(t.id);
           const saving = savingOffline.has(t.id);
           const isCurrent = currentId === t.id;
           const menuOpen = openMenu === t.id;
+          const isDragging = dragId === t.id;
           return (
             <li
               key={t.id}
+              ref={(el) => {
+                if (el) rowRefs.current.set(t.id, el);
+                else rowRefs.current.delete(t.id);
+              }}
               className={`relative flex items-center gap-3 rounded-2xl border p-2.5 backdrop-blur-md transition-colors duration-200 ${
                 menuOpen ? "z-30" : "z-0"
-              } ${isCurrent ? "border-primary/50 bg-white/8" : "border-white/8 bg-white/3"}`}
+              } ${isDragging ? "opacity-50" : ""} ${isCurrent ? "border-primary/50 bg-white/8" : "border-white/8 bg-white/3"}`}
             >
+              {canReorder && (
+                <button
+                  className="flex h-8 w-6 flex-none touch-none items-center justify-center text-on-surface-dim active:cursor-grabbing"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    beginDrag(t.id);
+                  }}
+                  aria-label={`Drag to reorder ${t.title}`}
+                >
+                  <span className="material-symbols-outlined text-lg">drag_indicator</span>
+                </button>
+              )}
               <button
                 className={`group relative flex h-12 w-12 flex-none items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br shadow-lg ${style.gradient}`}
                 onClick={() => onPlay(t, visible)}
@@ -421,7 +527,7 @@ export function Library({
         })}
       </ul>
 
-      {!showAll && visible.length > PAGE_SIZE && (
+      {!canReorder && !showAll && visible.length > PAGE_SIZE && (
         <button
           className="mt-3 w-full rounded-xl bg-surface-glass py-3 text-sm font-semibold text-primary transition-colors hover:bg-white/10"
           onClick={() => setShowAll(true)}

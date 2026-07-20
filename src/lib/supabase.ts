@@ -54,12 +54,21 @@ export async function uploadTrack(
       title: file.name.replace(/\.[^.]+$/, ""),
       folder,
       duration,
-      storage_path: path
+      storage_path: path,
+      // Negative epoch ms so new uploads always sort first within their
+      // folder, without needing to query the current minimum first.
+      sort_order: -Date.now()
     })
     .select()
     .single();
   if (error) throw error;
   onDone(data as Track);
+}
+
+/** Moves a track to a new position within its folder via fractional indexing. */
+export async function reorderTrack(id: string, sortOrder: number): Promise<void> {
+  const { error } = await supabase.from("tracks").update({ sort_order: sortOrder }).eq("id", id);
+  if (error) throw error;
 }
 
 export async function savePosition(id: string, position: number): Promise<void> {
@@ -68,6 +77,30 @@ export async function savePosition(id: string, position: number): Promise<void> 
 
 export async function markPlayed(id: string): Promise<void> {
   await supabase.from("tracks").update({ last_played_at: new Date().toISOString() }).eq("id", id);
+}
+
+/** Total bytes used in the audio bucket for the signed-in user. */
+export async function getStorageUsage(): Promise<number> {
+  const { data: userData } = await supabase.auth.getUser();
+  const uid = userData.user?.id;
+  if (!uid) return 0;
+
+  let total = 0;
+  let offset = 0;
+  const limit = 1000;
+  for (;;) {
+    const { data, error } = await supabase.storage.from("audio").list(uid, {
+      limit,
+      offset,
+      sortBy: { column: "name", order: "asc" }
+    });
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    for (const f of data) total += f.metadata?.size ?? 0;
+    if (data.length < limit) break;
+    offset += limit;
+  }
+  return total;
 }
 
 export async function deleteTrack(t: Track): Promise<void> {

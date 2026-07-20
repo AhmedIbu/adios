@@ -6,6 +6,7 @@ import {
   deleteTrack,
   renameTrack,
   reorderTrack,
+  moveTrack,
   markPlayed,
   getStorageUsage,
   seedDefaultFoldersIfEmpty,
@@ -183,6 +184,20 @@ export default function App() {
     } catch (e) {
       console.error(e);
       alert("Couldn't save the new order — check your connection.");
+    }
+  }, []);
+
+  const handleMoveTrack = useCallback(async (t: Track, folder: string) => {
+    try {
+      await moveTrack(t.id, folder);
+      setTracks((ts) => {
+        const next = ts.map((x) => (x.id === t.id ? { ...x, folder, sort_order: -Date.now() } : x));
+        cacheTrackList(next);
+        return next;
+      });
+    } catch (e) {
+      console.error(e);
+      alert("Couldn't move the track — check your connection.");
     }
   }, []);
 
@@ -408,6 +423,9 @@ export default function App() {
             onRemoveOffline={handleRemoveOffline}
             onDelete={handleDelete}
             onRename={handleRename}
+            onMoveTrack={handleMoveTrack}
+            onRenameFolder={handleRenameFolder}
+            onDeleteFolder={handleDeleteFolder}
           />
         )}
         {view === "browse" && (
@@ -426,6 +444,9 @@ export default function App() {
             onDelete={handleDelete}
             onRename={handleRename}
             onReorder={handleReorder}
+            onMoveTrack={handleMoveTrack}
+            onRenameFolder={handleRenameFolder}
+            onDeleteFolder={handleDeleteFolder}
           />
         )}
         {view === "upload" && (

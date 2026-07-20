@@ -113,6 +113,14 @@ export async function renameTrack(id: string, title: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function moveTrack(id: string, folder: string): Promise<void> {
+  const { error } = await supabase
+    .from("tracks")
+    .update({ folder, sort_order: -Date.now() })
+    .eq("id", id);
+  if (error) throw error;
+}
+
 export interface FolderRow {
   id: string;
   name: string;

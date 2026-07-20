@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Track, Folder } from "../lib/types";
 import { folderLabel, fmtTime } from "../lib/types";
 import type { FolderRow } from "../lib/supabase";
+import { vibrate } from "../lib/haptics";
 
 interface Props {
   tracks: Track[];
@@ -14,14 +15,65 @@ interface Props {
   onRemoveOffline: (t: Track) => void;
   onDelete: (t: Track) => void;
   onRename: (t: Track, title: string) => void;
+  onMoveTrack?: (t: Track, folder: string) => void;
   /** Browse mode only: persist a track's new position within its folder. */
   onReorder?: (t: Track, sortOrder: number) => void;
+  onRenameFolder?: (f: FolderRow, newName: string) => void;
+  onDeleteFolder?: (f: FolderRow) => void;
   /** Home mode: only tracks with a play history; folder tiles jump to Browse instead of filtering in place. */
   playedOnly: boolean;
   /** Browse mode: starting folder filter, set from the sidebar's Library dropdown. */
   initialFilter?: Folder | "all";
   /** Home mode only: navigate to a full Browse view for this folder. */
   onBrowseFolder?: (folder: string) => void;
+}
+
+/**
+ * Call once per component. Returns bind(onLongPress, onClick) which can be
+ * called freely inside .map() — it's a plain closure factory, not a hook,
+ * so it doesn't run into the Rules of Hooks despite being used per-row.
+ * Only one press gesture can be active at a time, so sharing the
+ * underlying refs across every row/tile is safe.
+ */
+function useLongPressBinder(delay = 500) {
+  const timer = useRef<number | null>(null);
+  const moved = useRef(false);
+  const start = useRef({ x: 0, y: 0 });
+
+  function cancel() {
+    if (timer.current !== null) {
+      window.clearTimeout(timer.current);
+      timer.current = null;
+    }
+  }
+
+  return function bind(onLongPress: () => void, onClick: () => void) {
+    return {
+      onPointerDown(e: React.PointerEvent) {
+        moved.current = false;
+        start.current = { x: e.clientX, y: e.clientY };
+        timer.current = window.setTimeout(() => {
+          timer.current = null;
+          onLongPress();
+        }, delay);
+      },
+      onPointerMove(e: React.PointerEvent) {
+        if (timer.current === null) return;
+        const dx = e.clientX - start.current.x;
+        const dy = e.clientY - start.current.y;
+        if (Math.hypot(dx, dy) > 10) {
+          moved.current = true;
+          cancel();
+        }
+      },
+      onPointerUp() {
+        const firedLongPress = timer.current === null && !moved.current;
+        cancel();
+        if (!firedLongPress && !moved.current) onClick();
+      },
+      onPointerLeave: cancel
+    };
+  };
 }
 
 const OFFLINE_DURATIONS: { label: string; ms: number | null }[] = [
@@ -137,7 +189,10 @@ export function Library({
   onRemoveOffline,
   onDelete,
   onRename,
+  onMoveTrack,
   onReorder,
+  onRenameFolder,
+  onDeleteFolder,
   playedOnly,
   initialFilter,
   onBrowseFolder
@@ -145,11 +200,15 @@ export function Library({
   const [filter, setFilter] = useState<Folder | "all">(initialFilter ?? "all");
   const [query, setQuery] = useState("");
   const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const [menuMode, setMenuMode] = useState<"main" | "offline">("main");
+  const [menuMode, setMenuMode] = useState<"main" | "offline" | "move">("main");
   const [showAll, setShowAll] = useState(false);
   const [renaming, setRenaming] = useState<Track | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [folderMenu, setFolderMenu] = useState<FolderRow | null>(null);
+  const [renamingFolder, setRenamingFolder] = useState<FolderRow | null>(null);
+  const [folderNameValue, setFolderNameValue] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
+  const bindLongPress = useLongPressBinder();
 
   // Drag-to-reorder (Browse mode, single folder only — query.length===0 keeps
   // the dragged list's positions meaningful against the real folder order).
@@ -282,10 +341,16 @@ export function Library({
             return (
               <button
                 key={folder.id}
-                className={`group relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br transition-transform duration-200 active:scale-95 ${style.gradient} ${style.glow} ${
+                className={`group relative flex aspect-square touch-none flex-col items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br transition-transform duration-200 active:scale-95 ${style.gradient} ${style.glow} ${
                   on ? "ring-2 ring-primary" : ""
                 }`}
-                onClick={() => (playedOnly ? onBrowseFolder?.(f) : setFilter(on ? "all" : f))}
+                {...bindLongPress(
+                  () => {
+                    vibrate(15);
+                    setFolderMenu(folder);
+                  },
+                  () => (playedOnly ? onBrowseFolder?.(f) : setFilter(on ? "all" : f))
+                )}
               >
                 <div
                   className="animate-float mb-1.5 flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/10 backdrop-blur-md"
@@ -405,7 +470,16 @@ export function Library({
                   play_arrow
                 </span>
               </button>
-              <button className="min-w-0 flex-1 text-left" onClick={() => onPlay(t, visible)}>
+              <button
+                className="min-w-0 flex-1 touch-none text-left"
+                {...bindLongPress(
+                  () => {
+                    vibrate(15);
+                    toggleMenu(t.id);
+                  },
+                  () => onPlay(t, visible)
+                )}
+              >
                 <p className="truncate text-base leading-tight font-bold text-on-surface">
                   {t.title}
                 </p>
@@ -453,6 +527,21 @@ export function Library({
                     <span className="material-symbols-outlined text-lg">edit</span>
                     Rename
                   </button>
+                  {onMoveTrack && folders.length > 1 && (
+                    <button
+                      className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-on-surface hover:bg-white/5"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuMode("move");
+                      }}
+                    >
+                      <span className="material-symbols-outlined text-lg">drive_file_move</span>
+                      Move to…
+                      <span className="material-symbols-outlined ml-auto text-lg">
+                        chevron_right
+                      </span>
+                    </button>
+                  )}
                   {kept ? (
                     <button
                       className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-on-surface hover:bg-white/5 disabled:opacity-50"
@@ -522,6 +611,35 @@ export function Library({
                   ))}
                 </div>
               )}
+
+              {menuOpen && menuMode === "move" && (
+                <div
+                  className="absolute top-12 right-2 z-20 max-h-64 w-52 overflow-y-auto rounded-xl border border-white/10 bg-surface shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs font-semibold tracking-wide text-on-surface-dim uppercase hover:bg-white/5"
+                    onClick={() => setMenuMode("main")}
+                  >
+                    <span className="material-symbols-outlined text-lg">chevron_left</span>
+                    Move to…
+                  </button>
+                  {folders
+                    .filter((f) => f.name !== t.folder)
+                    .map((f) => (
+                      <button
+                        key={f.id}
+                        className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-on-surface hover:bg-white/5"
+                        onClick={() => {
+                          onMoveTrack?.(t, f.name);
+                          setOpenMenu(null);
+                        }}
+                      >
+                        <span className="min-w-0 truncate">{folderLabel(f.name)}</span>
+                      </button>
+                    ))}
+                </div>
+              )}
             </li>
           );
         })}
@@ -572,6 +690,91 @@ export function Library({
                 onClick={() => {
                   onRename(renaming, renameValue.trim());
                   setRenaming(null);
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {folderMenu && (
+        <div
+          className="fixed inset-0 z-[80] flex items-end bg-black/50 backdrop-blur-sm"
+          onClick={() => setFolderMenu(null)}
+        >
+          <div
+            className="mx-auto w-full max-w-xl rounded-t-3xl bg-surface pb-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="h-1 w-10 rounded-full bg-white/20" />
+            </div>
+            <h3 className="px-5 py-3 text-center text-base font-semibold text-on-surface">
+              {folderLabel(folderMenu.name)}
+            </h3>
+            <button
+              className="flex w-full items-center gap-3 px-6 py-3.5 text-left text-on-surface hover:bg-white/5"
+              onClick={() => {
+                setRenamingFolder(folderMenu);
+                setFolderNameValue(folderMenu.name);
+                setFolderMenu(null);
+              }}
+            >
+              <span className="material-symbols-outlined text-lg">edit</span>
+              Rename
+            </button>
+            <button
+              className="flex w-full items-center gap-3 px-6 py-3.5 text-left text-error hover:bg-white/5"
+              onClick={() => {
+                onDeleteFolder?.(folderMenu);
+                setFolderMenu(null);
+              }}
+            >
+              <span className="material-symbols-outlined text-lg">delete</span>
+              Delete
+            </button>
+          </div>
+        </div>
+      )}
+
+      {renamingFolder && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-6 backdrop-blur-sm"
+          onClick={() => setRenamingFolder(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-white/10 bg-surface p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-3 text-lg font-bold text-on-surface">Rename folder</h3>
+            <input
+              autoFocus
+              className="mb-4 h-12 w-full rounded-lg border border-outline-dim bg-bg/40 px-4 text-on-surface focus:ring-2 focus:ring-primary/20 focus:outline-none"
+              value={folderNameValue}
+              onChange={(e) => setFolderNameValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && folderNameValue.trim()) {
+                  onRenameFolder?.(renamingFolder, folderNameValue.trim());
+                  setRenamingFolder(null);
+                }
+                if (e.key === "Escape") setRenamingFolder(null);
+              }}
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-on-surface-dim hover:bg-white/5"
+                onClick={() => setRenamingFolder(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-on-primary disabled:opacity-50"
+                disabled={!folderNameValue.trim()}
+                onClick={() => {
+                  onRenameFolder?.(renamingFolder, folderNameValue.trim());
+                  setRenamingFolder(null);
                 }}
               >
                 Save

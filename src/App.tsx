@@ -12,7 +12,8 @@ import {
   seedDefaultFoldersIfEmpty,
   createFolder,
   renameFolder,
-  deleteFolder
+  deleteFolder,
+  deleteFolderCascade
 } from "./lib/supabase";
 import type { FolderRow } from "./lib/supabase";
 import {
@@ -243,15 +244,47 @@ export default function App() {
     }
   }, []);
 
-  const handleDeleteFolder = useCallback(async (f: FolderRow) => {
-    try {
-      await deleteFolder(f.id, f.name);
-      setFolders((fs) => fs.filter((x) => x.id !== f.id));
-    } catch (e) {
-      console.error(e);
-      alert(e instanceof Error ? e.message : "Couldn't delete folder.");
-    }
-  }, []);
+  const handleDeleteFolder = useCallback(
+    async (f: FolderRow) => {
+      const inFolder = tracks.filter((t) => t.folder === f.name);
+      if (inFolder.length === 0) {
+        try {
+          await deleteFolder(f.id, f.name);
+          setFolders((fs) => fs.filter((x) => x.id !== f.id));
+        } catch (e) {
+          console.error(e);
+          alert(e instanceof Error ? e.message : "Couldn't delete folder.");
+        }
+        return;
+      }
+
+      const count = inFolder.length;
+      const confirmed = confirm(
+        `"${folderLabel(f.name)}" has ${count} track${count === 1 ? "" : "s"}. Delete the folder AND all ${count} track${count === 1 ? "" : "s"} — audio files included? This cannot be undone.`
+      );
+      if (!confirmed) return;
+
+      try {
+        await deleteFolderCascade(f.id, f.name);
+        setFolders((fs) => fs.filter((x) => x.id !== f.id));
+        const removedIds = new Set(inFolder.map((t) => t.id));
+        setTracks((ts) => {
+          const next = ts.filter((t) => !removedIds.has(t.id));
+          cacheTrackList(next);
+          return next;
+        });
+        await Promise.all(inFolder.map((t) => removeOffline(t.id)));
+        setOffline(await loadOfflineIds());
+        getStorageUsage()
+          .then(setStorageBytes)
+          .catch((e) => console.error(e));
+      } catch (e) {
+        console.error(e);
+        alert(e instanceof Error ? e.message : "Couldn't delete folder.");
+      }
+    },
+    [tracks]
+  );
 
   if (session === undefined) {
     return <main className="min-h-dvh bg-bg" aria-busy="true" />;

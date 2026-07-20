@@ -178,3 +178,24 @@ export async function deleteFolder(id: string, name: string): Promise<void> {
   const { error } = await supabase.from("folders").delete().eq("id", id);
   if (error) throw error;
 }
+
+/** Deletes the folder AND every track (audio file + row) in it. Irreversible. */
+export async function deleteFolderCascade(id: string, name: string): Promise<void> {
+  const { data: rows, error: listErr } = await supabase
+    .from("tracks")
+    .select("storage_path")
+    .eq("folder", name);
+  if (listErr) throw listErr;
+
+  const paths = (rows ?? []).map((r) => r.storage_path);
+  if (paths.length > 0) {
+    const { error: rmErr } = await supabase.storage.from("audio").remove(paths);
+    if (rmErr) throw rmErr;
+  }
+
+  const { error: delTracksErr } = await supabase.from("tracks").delete().eq("folder", name);
+  if (delTracksErr) throw delTracksErr;
+
+  const { error: delFolderErr } = await supabase.from("folders").delete().eq("id", id);
+  if (delFolderErr) throw delFolderErr;
+}

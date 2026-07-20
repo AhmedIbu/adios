@@ -207,6 +207,7 @@ export function Library({
   const [folderMenu, setFolderMenu] = useState<FolderRow | null>(null);
   const [renamingFolder, setRenamingFolder] = useState<FolderRow | null>(null);
   const [folderNameValue, setFolderNameValue] = useState("");
+  const [poppedFolderId, setPoppedFolderId] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const bindLongPress = useLongPressBinder();
 
@@ -338,15 +339,18 @@ export function Library({
             const style = styleFor(f);
             const count = tracks.filter((t) => t.folder === f).length;
             const on = filter === f;
+            const popped = poppedFolderId === folder.id;
             return (
               <button
                 key={folder.id}
-                className={`group relative flex aspect-square touch-none flex-col items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br transition-transform duration-200 active:scale-95 ${style.gradient} ${style.glow} ${
+                className={`group relative flex aspect-square touch-none flex-col items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br transition-transform duration-150 ${style.gradient} ${style.glow} ${
                   on ? "ring-2 ring-primary" : ""
-                }`}
+                } ${popped ? "animate-long-press-pop" : "active:scale-[0.97]"}`}
                 {...bindLongPress(
                   () => {
                     vibrate(15);
+                    setPoppedFolderId(folder.id);
+                    window.setTimeout(() => setPoppedFolderId(null), 350);
                     setFolderMenu(folder);
                   },
                   () => (playedOnly ? onBrowseFolder?.(f) : setFilter(on ? "all" : f))

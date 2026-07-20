@@ -216,6 +216,26 @@
     animation: wave 1.05s ease-in-out infinite;
   }
 
+  /* ============ Long-press confirm pop ============ */
+  @keyframes long-press-pop {
+    0% {
+      transform: scale(1);
+    }
+    40% {
+      transform: scale(0.92);
+    }
+    70% {
+      transform: scale(1.05);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  .animate-long-press-pop {
+    animation: long-press-pop 0.35s var(--ease-brand);
+  }
+
   /* ============ App shell entrance ============ */
   @keyframes app-in {
     from {

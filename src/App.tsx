@@ -63,20 +63,37 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  const { state, play: playTrack, toggle, seekBy, seekTo, setSpeed, setSleep } = usePlayer();
+  const handleTrackChange = useCallback((t: Track) => {
+    markPlayed(t.id).catch((e) => console.error(e));
+    const playedAt = new Date().toISOString();
+    setTracks((ts) => {
+      const next = ts.map((x) => (x.id === t.id ? { ...x, last_played_at: playedAt } : x));
+      cacheTrackList(next);
+      return next;
+    });
+  }, []);
+
+  const {
+    state,
+    playQueue,
+    next: playNext,
+    prev: playPrev,
+    jumpTo,
+    toggleShuffle,
+    cycleLoop,
+    toggle,
+    seekBy,
+    seekTo,
+    setSpeed,
+    setSleep
+  } = usePlayer(handleTrackChange);
 
   const play = useCallback(
-    (t: Track) => {
-      markPlayed(t.id).catch((e) => console.error(e));
-      const playedAt = new Date().toISOString();
-      setTracks((ts) => {
-        const next = ts.map((x) => (x.id === t.id ? { ...x, last_played_at: playedAt } : x));
-        cacheTrackList(next);
-        return next;
-      });
-      playTrack(t);
+    (t: Track, queue: Track[]) => {
+      const idx = queue.findIndex((x) => x.id === t.id);
+      playQueue(queue, idx >= 0 ? idx : 0);
     },
-    [playTrack]
+    [playQueue]
   );
 
   useEffect(() => {
@@ -383,6 +400,11 @@ export default function App() {
         onSeekTo={seekTo}
         onSpeed={setSpeed}
         onSleep={setSleep}
+        onNext={playNext}
+        onPrev={playPrev}
+        onJumpTo={jumpTo}
+        onToggleShuffle={toggleShuffle}
+        onCycleLoop={cycleLoop}
       />
 
       <button

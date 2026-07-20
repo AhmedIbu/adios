@@ -9,7 +9,7 @@ interface Props {
   currentId: string | null;
   offlineIds: Set<string>;
   savingOffline: Set<string>;
-  onPlay: (t: Track) => void;
+  onPlay: (t: Track, queue: Track[]) => void;
   onKeepOffline: (t: Track, durationMs: number | null) => void;
   onRemoveOffline: (t: Track) => void;
   onDelete: (t: Track) => void;
@@ -289,7 +289,7 @@ export function Library({
             >
               <button
                 className={`group relative flex h-12 w-12 flex-none items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br shadow-lg ${style.gradient}`}
-                onClick={() => onPlay(t)}
+                onClick={() => onPlay(t, visible)}
                 aria-label={`Play ${t.title}`}
               >
                 <span className={`material-symbols-outlined is-filled text-xl ${style.iconColor} opacity-70 transition-opacity group-hover:opacity-0`}>
@@ -299,7 +299,7 @@ export function Library({
                   play_arrow
                 </span>
               </button>
-              <button className="min-w-0 flex-1 text-left" onClick={() => onPlay(t)}>
+              <button className="min-w-0 flex-1 text-left" onClick={() => onPlay(t, visible)}>
                 <p className="truncate text-base leading-tight font-bold text-on-surface">
                   {t.title}
                 </p>

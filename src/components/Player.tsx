@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { PlayerState } from "../hooks/usePlayer";
 import { fmtTime } from "../lib/types";
 
@@ -9,11 +9,17 @@ interface Props {
   onSeekTo: (t: number) => void;
   onSpeed: (s: number) => void;
   onSleep: (minutes: number | null) => void;
+  onNext: () => void;
+  onPrev: () => void;
+  onJumpTo: (position: number) => void;
+  onToggleShuffle: () => void;
+  onCycleLoop: () => void;
 }
 
 const SPEEDS = [0.75, 1, 1.25, 1.5, 1.75, 2];
 const SLEEPS = [5, 10, 15, 30, 45, 60];
 const WAVE_HEIGHTS = [10, 18, 26, 15, 22, 30, 14, 20];
+const SWIPE_THRESHOLD = 70;
 
 function SkipIcon({ direction }: { direction: "back" | "forward" }) {
   return (
@@ -35,13 +41,49 @@ function SkipIcon({ direction }: { direction: "back" | "forward" }) {
   );
 }
 
-export function Player({ state, onToggle, onSeekBy, onSeekTo, onSpeed, onSleep }: Props) {
+export function Player({
+  state,
+  onToggle,
+  onSeekBy,
+  onSeekTo,
+  onSpeed,
+  onSleep,
+  onNext,
+  onPrev,
+  onJumpTo,
+  onToggleShuffle,
+  onCycleLoop
+}: Props) {
   const [open, setOpen] = useState(false);
-  const [sheet, setSheet] = useState<"speed" | "sleep" | null>(null);
-  const { track, playing, time, duration, speed, sleepLeft } = state;
+  const [sheet, setSheet] = useState<"speed" | "sleep" | "queue" | null>(null);
+  const { track, playing, time, duration, speed, sleepLeft, queue, order, position, shuffle, loop } =
+    state;
+
+  const [dragX, setDragX] = useState(0);
+  const dragging = useRef(false);
+  const startX = useRef(0);
+
   if (!track) return null;
 
   const pct = duration > 0 ? (time / duration) * 100 : 0;
+  const hasQueue = order.length > 1;
+
+  function onPointerDown(e: React.PointerEvent) {
+    dragging.current = true;
+    startX.current = e.clientX;
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+  }
+  function onPointerMove(e: React.PointerEvent) {
+    if (!dragging.current) return;
+    setDragX(e.clientX - startX.current);
+  }
+  function onPointerUp() {
+    if (!dragging.current) return;
+    dragging.current = false;
+    if (dragX <= -SWIPE_THRESHOLD) onNext();
+    else if (dragX >= SWIPE_THRESHOLD) onPrev();
+    setDragX(0);
+  }
 
   return (
     <>
@@ -130,7 +172,17 @@ export function Player({ state, onToggle, onSeekBy, onSeekTo, onSpeed, onSleep }
 
         <div className="flex flex-1 flex-col px-6 pb-6">
           <div className="flex flex-grow flex-col items-center justify-center py-6">
-            <div className="relative aspect-square w-full max-w-[320px] overflow-hidden rounded-[2rem] bg-gradient-to-br from-primary-container to-secondary-container shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
+            <div
+              className="relative aspect-square w-full max-w-[320px] touch-none overflow-hidden rounded-[2rem] bg-gradient-to-br from-primary-container to-secondary-container shadow-[0_20px_50px_rgba(0,0,0,0.3)]"
+              onPointerDown={hasQueue ? onPointerDown : undefined}
+              onPointerMove={hasQueue ? onPointerMove : undefined}
+              onPointerUp={hasQueue ? onPointerUp : undefined}
+              onPointerCancel={hasQueue ? onPointerUp : undefined}
+              style={{
+                transform: `translateX(${dragX}px)`,
+                transition: dragging.current ? "none" : "transform 0.3s var(--ease-brand)"
+              }}
+            >
               <div className="flex h-full items-center justify-center text-7xl">🎧</div>
               <div className="absolute inset-x-0 bottom-0 flex h-24 items-end justify-center gap-1 px-8 pb-8">
                 {WAVE_HEIGHTS.map((h, i) => (
@@ -144,6 +196,9 @@ export function Player({ state, onToggle, onSeekBy, onSeekTo, onSpeed, onSleep }
                 ))}
               </div>
             </div>
+            {hasQueue && (
+              <p className="mt-2 text-[11px] text-on-surface-dim">Swipe to skip</p>
+            )}
           </div>
 
           <div className="mb-8">
@@ -173,13 +228,14 @@ export function Player({ state, onToggle, onSeekBy, onSeekTo, onSpeed, onSleep }
             </div>
           </div>
 
-          <div className="flex items-center justify-between px-2">
+          <div className="mb-6 flex items-center justify-between px-1">
             <button
-              className="rounded-full px-3 py-1.5 text-sm font-bold text-on-surface transition-colors hover:bg-surface-high active:scale-90"
-              onClick={() => setSheet("speed")}
-              aria-label="Playback speed"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-on-surface transition-colors hover:bg-surface-high active:scale-90 disabled:opacity-30"
+              onClick={onPrev}
+              disabled={!hasQueue}
+              aria-label="Previous track"
             >
-              {speed}×
+              <span className="material-symbols-outlined text-3xl">skip_previous</span>
             </button>
             <button
               className="flex h-11 w-11 items-center justify-center rounded-full text-on-surface transition-colors hover:bg-surface-high active:scale-90"
@@ -205,13 +261,60 @@ export function Player({ state, onToggle, onSeekBy, onSeekTo, onSpeed, onSleep }
               <SkipIcon direction="forward" />
             </button>
             <button
-              className={`flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-surface-high active:scale-90 ${
+              className="flex h-11 w-11 items-center justify-center rounded-full text-on-surface transition-colors hover:bg-surface-high active:scale-90 disabled:opacity-30"
+              onClick={onNext}
+              disabled={!hasQueue}
+              aria-label="Next track"
+            >
+              <span className="material-symbols-outlined text-3xl">skip_next</span>
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between px-2">
+            <button
+              className="rounded-full px-3 py-1.5 text-sm font-bold text-on-surface transition-colors hover:bg-surface-high active:scale-90"
+              onClick={() => setSheet("speed")}
+              aria-label="Playback speed"
+            >
+              {speed}×
+            </button>
+            <button
+              className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-surface-high active:scale-90 ${
+                shuffle ? "text-primary" : "text-on-surface"
+              }`}
+              onClick={onToggleShuffle}
+              aria-label={shuffle ? "Disable shuffle" : "Enable shuffle"}
+              aria-pressed={shuffle}
+            >
+              <span className="material-symbols-outlined text-xl">shuffle</span>
+            </button>
+            <button
+              className="flex h-10 w-10 items-center justify-center rounded-full text-on-surface transition-colors hover:bg-surface-high active:scale-90 disabled:opacity-30"
+              onClick={() => setSheet("queue")}
+              disabled={queue.length === 0}
+              aria-label="Show queue"
+            >
+              <span className="material-symbols-outlined text-xl">queue_music</span>
+            </button>
+            <button
+              className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-surface-high active:scale-90 ${
+                loop !== "off" ? "text-primary" : "text-on-surface"
+              }`}
+              onClick={onCycleLoop}
+              aria-label={`Repeat: ${loop}`}
+            >
+              <span className="material-symbols-outlined text-xl">
+                {loop === "one" ? "repeat_one" : "repeat"}
+              </span>
+            </button>
+            <button
+              className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-surface-high active:scale-90 ${
                 sleepLeft !== null ? "text-primary" : "text-on-surface"
               }`}
               onClick={() => setSheet("sleep")}
               aria-label="Sleep timer"
             >
-              <span className="material-symbols-outlined text-2xl">timer</span>
+              <span className="material-symbols-outlined text-xl">timer</span>
             </button>
           </div>
           {sleepLeft !== null && (
@@ -222,21 +325,22 @@ export function Player({ state, onToggle, onSeekBy, onSeekTo, onSpeed, onSleep }
         </div>
       </div>
 
-      {/* Speed bottom sheet */}
+      {/* Bottom sheets */}
       {sheet && (
         <div
           className="fixed inset-0 z-[90] flex items-end bg-black/50 backdrop-blur-sm"
           onClick={() => setSheet(null)}
         >
           <div
-            className="mx-auto w-full max-w-xl rounded-t-3xl bg-[#1a1a1a] pb-[calc(env(safe-area-inset-bottom,0px)+24px)] shadow-2xl"
+            className="mx-auto flex max-h-[75vh] w-full max-w-xl flex-col rounded-t-3xl bg-[#1a1a1a] shadow-2xl"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-center pt-3 pb-1">
               <div className="h-1 w-10 rounded-full bg-white/20" />
             </div>
 
-            {sheet === "speed" ? (
+            {sheet === "speed" && (
               <>
                 <h3 className="py-3 text-center text-base font-semibold text-on-surface">Speed</h3>
                 <p className="mb-4 text-center text-3xl font-bold text-on-surface">{speed}×</p>
@@ -271,7 +375,9 @@ export function Player({ state, onToggle, onSeekBy, onSeekTo, onSpeed, onSleep }
                   ))}
                 </div>
               </>
-            ) : (
+            )}
+
+            {sheet === "sleep" && (
               <>
                 <h3 className="py-3 text-center text-base font-semibold text-on-surface">
                   Sleep timer
@@ -303,6 +409,43 @@ export function Player({ state, onToggle, onSeekBy, onSeekTo, onSpeed, onSleep }
                       </button>
                     </li>
                   ))}
+                </ul>
+              </>
+            )}
+
+            {sheet === "queue" && (
+              <>
+                <h3 className="py-3 text-center text-base font-semibold text-on-surface">
+                  Up Next {shuffle && <span className="text-on-surface-dim">· Shuffled</span>}
+                </h3>
+                <ul className="overflow-y-auto pb-2">
+                  {order.map((queueIdx, pos) => {
+                    const t = queue[queueIdx];
+                    const isCurrent = pos === position;
+                    return (
+                      <li key={`${t.id}-${pos}`}>
+                        <button
+                          className={`flex w-full items-center gap-3 px-5 py-3 text-left hover:bg-white/5 ${
+                            isCurrent ? "text-primary" : "text-on-surface"
+                          }`}
+                          onClick={() => {
+                            onJumpTo(pos);
+                            setSheet(null);
+                          }}
+                        >
+                          <span className="material-symbols-outlined w-5 text-lg">
+                            {isCurrent && playing ? "graphic_eq" : "music_note"}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                            {t.title}
+                          </span>
+                          <span className="flex-none text-xs text-on-surface-dim">
+                            {fmtTime(t.duration)}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               </>
             )}

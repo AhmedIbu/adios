@@ -138,6 +138,33 @@
     outline-offset: 2px;
   }
 
+  /* ============ Smooth default tap feedback ============ */
+  /* A sane default for every clickable element. Anything with its own
+     explicit Tailwind transition/active:scale utility still wins, since
+     Tailwind's utilities layer is declared after this base layer. */
+  button,
+  a,
+  select,
+  summary,
+  [role="button"] {
+    cursor: pointer;
+    transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+    transition-duration: 0.2s;
+    transition-timing-function: var(--ease-brand);
+  }
+
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  button:not(:disabled):active,
+  a:active,
+  select:active,
+  [role="button"]:not([aria-disabled="true"]):active {
+    transform: scale(0.96);
+  }
+
   .material-symbols-outlined {
     font-variation-settings:
       "FILL" 0,

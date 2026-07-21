@@ -31,11 +31,14 @@ import { Library } from "./components/Library";
 import { Upload } from "./components/Upload";
 import { Player } from "./components/Player";
 import { SalahView } from "./components/salah/SalahView";
+import { AppPicker } from "./components/AppPicker";
 
 type Theme = "dark" | "light";
+type AppChoice = "picker" | "adios" | "salah";
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
+  const [app, setApp] = useState<AppChoice>("picker");
   const [tracks, setTracks] = useState<Track[]>([]);
   const [folders, setFolders] = useState<FolderRow[]>([]);
   const [offline, setOffline] = useState<Set<string>>(new Set());
@@ -46,7 +49,7 @@ export default function App() {
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [libraryExpanded, setLibraryExpanded] = useState(false);
-  const [view, setView] = useState<"home" | "upload" | "browse" | "salah">("home");
+  const [view, setView] = useState<"home" | "upload" | "browse">("home");
   const [browseFolder, setBrowseFolder] = useState<string>("all");
   const [storageBytes, setStorageBytes] = useState<number | null>(null);
 
@@ -66,12 +69,6 @@ export default function App() {
   const goUpload = useCallback(() => {
     setDrawerOpen(false);
     setView("upload");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, []);
-
-  const goSalah = useCallback(() => {
-    setDrawerOpen(false);
-    setView("salah");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
@@ -299,6 +296,58 @@ export default function App() {
   if (!session) {
     return <Gate />;
   }
+  if (app === "picker") {
+    return <AppPicker onSelect={setApp} />;
+  }
+
+  if (app === "salah") {
+    return (
+      <>
+        <div
+          className="mesh-gradient mx-auto min-h-dvh max-w-xl"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6rem)" }}
+        >
+          <header
+            className="sticky top-0 z-30 flex items-center justify-between border-b border-white/5 bg-bg/60 px-4 backdrop-blur-md"
+            style={{
+              paddingTop: "env(safe-area-inset-top, 0px)",
+              height: "calc(3.5rem + env(safe-area-inset-top, 0px))"
+            }}
+          >
+            <button
+              className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 text-on-surface-dim transition-colors duration-200 hover:text-primary active:scale-90"
+              onClick={() => setApp("picker")}
+              aria-label="Switch app"
+              title="Switch app"
+            >
+              <span className="material-symbols-outlined text-xl">apps</span>
+            </button>
+            <h1 className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-lg font-extrabold tracking-tight text-transparent">
+              Salah
+            </h1>
+            <div className="h-9 w-9" />
+          </header>
+          <main className="animate-app-in px-4 pt-4">
+            <SalahView />
+          </main>
+        </div>
+        <Player
+          lifted
+          state={state}
+          onToggle={toggle}
+          onSeekBy={seekBy}
+          onSeekTo={seekTo}
+          onSpeed={setSpeed}
+          onSleep={setSleep}
+          onNext={playNext}
+          onPrev={playPrev}
+          onJumpTo={jumpTo}
+          onToggleShuffle={toggleShuffle}
+          onCycleLoop={cycleLoop}
+        />
+      </>
+    );
+  }
 
   return (
     <div
@@ -325,16 +374,26 @@ export default function App() {
             Hey Ibu 👋
           </h1>
         </div>
-        <button
-          className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 text-on-surface-dim transition-colors duration-200 hover:text-primary active:scale-90"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          aria-label="Toggle theme"
-          title="Toggle theme"
-        >
-          <span className="material-symbols-outlined text-xl">
-            {theme === "dark" ? "light_mode" : "dark_mode"}
-          </span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 text-on-surface-dim transition-colors duration-200 hover:text-primary active:scale-90"
+            onClick={() => setApp("picker")}
+            aria-label="Switch app"
+            title="Switch app"
+          >
+            <span className="material-symbols-outlined text-xl">apps</span>
+          </button>
+          <button
+            className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 text-on-surface-dim transition-colors duration-200 hover:text-primary active:scale-90"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            aria-label="Toggle theme"
+            title="Toggle theme"
+          >
+            <span className="material-symbols-outlined text-xl">
+              {theme === "dark" ? "light_mode" : "dark_mode"}
+            </span>
+          </button>
+        </div>
       </header>
 
       {/* Sidebar drawer */}
@@ -407,16 +466,6 @@ export default function App() {
               ))}
             </div>
           )}
-
-          <button
-            className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-white/5 ${
-              view === "salah" ? "text-primary" : "text-on-surface"
-            }`}
-            onClick={goSalah}
-          >
-            <span className="material-symbols-outlined">mosque</span>
-            <span className="font-semibold">Salah</span>
-          </button>
 
           <button
             className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-white/5 ${
@@ -517,11 +566,9 @@ export default function App() {
             onDeleteFolder={handleDeleteFolder}
           />
         )}
-        {view === "salah" && <SalahView />}
       </main>
 
       <Player
-        lifted={view === "salah"}
         state={state}
         onToggle={toggle}
         onSeekBy={seekBy}

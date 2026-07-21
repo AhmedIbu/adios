@@ -30,6 +30,7 @@ import { Gate } from "./components/Gate";
 import { Library } from "./components/Library";
 import { Upload } from "./components/Upload";
 import { Player } from "./components/Player";
+import { SalahView } from "./components/salah/SalahView";
 
 type Theme = "dark" | "light";
 
@@ -45,7 +46,7 @@ export default function App() {
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [libraryExpanded, setLibraryExpanded] = useState(false);
-  const [view, setView] = useState<"home" | "upload" | "browse">("home");
+  const [view, setView] = useState<"home" | "upload" | "browse" | "salah">("home");
   const [browseFolder, setBrowseFolder] = useState<string>("all");
   const [storageBytes, setStorageBytes] = useState<number | null>(null);
 
@@ -65,6 +66,12 @@ export default function App() {
   const goUpload = useCallback(() => {
     setDrawerOpen(false);
     setView("upload");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  const goSalah = useCallback(() => {
+    setDrawerOpen(false);
+    setView("salah");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
@@ -403,6 +410,16 @@ export default function App() {
 
           <button
             className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-white/5 ${
+              view === "salah" ? "text-primary" : "text-on-surface"
+            }`}
+            onClick={goSalah}
+          >
+            <span className="material-symbols-outlined">mosque</span>
+            <span className="font-semibold">Salah</span>
+          </button>
+
+          <button
+            className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-white/5 ${
               view === "upload" ? "text-primary" : "text-on-surface"
             }`}
             onClick={goUpload}
@@ -500,9 +517,11 @@ export default function App() {
             onDeleteFolder={handleDeleteFolder}
           />
         )}
+        {view === "salah" && <SalahView />}
       </main>
 
       <Player
+        lifted={view === "salah"}
         state={state}
         onToggle={toggle}
         onSeekBy={seekBy}

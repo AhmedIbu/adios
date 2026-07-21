@@ -15,6 +15,8 @@ interface Props {
   onJumpTo: (position: number) => void;
   onToggleShuffle: () => void;
   onCycleLoop: () => void;
+  /** Raise the mini bar clear of a bottom tab bar (e.g. the Salah view). */
+  lifted?: boolean;
 }
 
 const SPEEDS = [0.75, 1, 1.25, 1.5, 1.75, 2];
@@ -53,7 +55,8 @@ export function Player({
   onPrev,
   onJumpTo,
   onToggleShuffle,
-  onCycleLoop
+  onCycleLoop,
+  lifted = false
 }: Props) {
   const [open, setOpen] = useState(false);
   const [sheet, setSheet] = useState<"speed" | "sleep" | "queue" | null>(null);
@@ -99,7 +102,7 @@ export function Player({
           open ? "pointer-events-none translate-y-[calc(100%+2rem)] opacity-0" : ""
         }`}
         style={{
-          bottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)",
+          bottom: `calc(env(safe-area-inset-bottom, 0px) + ${lifted ? "5.5rem" : "1rem"})`,
           backgroundColor: "rgb(45 49 51 / 0.7)",
           backdropFilter: "blur(24px) saturate(180%)"
         }}

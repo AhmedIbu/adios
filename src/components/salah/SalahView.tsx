@@ -83,7 +83,9 @@ export function SalahView() {
       {!loading && !loadError && (
         <>
           {tab === "today" && <SalahToday logs={logs} onSetStatus={handleSetStatus} />}
-          {tab === "history" && <SalahHistory logs={logs} />}
+          {tab === "history" && (
+            <SalahHistory logs={logs} onSetStatus={handleSetStatus} />
+          )}
           {tab === "qada" && (
             <SalahQada logs={logs} qadaLogs={qadaLogs} onLogQada={handleLogQada} />
           )}

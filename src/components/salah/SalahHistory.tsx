@@ -1,10 +1,29 @@
 import { useMemo, useState } from "react";
-import type { PrayerLog, PrayerStatus } from "../../lib/salah";
+import type { Prayer, PrayerLog, PrayerStatus } from "../../lib/salah";
 import { PRAYERS, PRAYER_LABELS, buildLogMap, prayedCount, toDayString } from "../../lib/salah";
 import { PRAYER_META } from "./meta";
 
 interface Props {
   logs: PrayerLog[];
+  onSetStatus: (day: string, prayer: Prayer, status: PrayerStatus) => void;
+}
+
+const STATUSES: { id: PrayerStatus; label: string }[] = [
+  { id: "on_time", label: "On" },
+  { id: "late", label: "Late" },
+  { id: "missed", label: "Miss" }
+];
+
+function statusBtnClasses(status: PrayerStatus, active: boolean): string {
+  if (!active) return "text-on-surface-dim/50 hover:text-on-surface";
+  switch (status) {
+    case "on_time":
+      return "bg-primary text-on-primary";
+    case "late":
+      return "bg-tertiary-container text-on-tertiary-container";
+    case "missed":
+      return "bg-white/15 text-on-surface";
+  }
 }
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -19,19 +38,6 @@ const INTENSITY = [
   "bg-primary border-primary text-on-primary shadow-[0_0_10px_rgba(154,204,243,0.4)]"
 ];
 
-function statusLabel(s: PrayerStatus | undefined): { label: string; cls: string } {
-  switch (s) {
-    case "on_time":
-      return { label: "On time", cls: "text-primary" };
-    case "late":
-      return { label: "Late", cls: "text-tertiary" };
-    case "missed":
-      return { label: "Missed", cls: "text-on-surface-dim" };
-    default:
-      return { label: "Not logged", cls: "text-on-surface-dim/50" };
-  }
-}
-
 function hijriLabel(d: Date): string | null {
   try {
     return new Intl.DateTimeFormat("en-u-ca-islamic-umalqura", {
@@ -43,7 +49,7 @@ function hijriLabel(d: Date): string | null {
   }
 }
 
-export function SalahHistory({ logs }: Props) {
+export function SalahHistory({ logs, onSetStatus }: Props) {
   const [month, setMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -166,7 +172,7 @@ export function SalahHistory({ logs }: Props) {
           <div className="space-y-2">
             {PRAYERS.map((p) => {
               const meta = PRAYER_META[p];
-              const st = statusLabel(selectedEntry?.[p]);
+              const status = selectedEntry?.[p];
               return (
                 <div
                   key={p}
@@ -176,15 +182,27 @@ export function SalahHistory({ logs }: Props) {
                     <span className={`material-symbols-outlined ${meta.color}`}>{meta.icon}</span>
                     <span className="text-sm font-bold text-on-surface">{PRAYER_LABELS[p]}</span>
                   </div>
-                  <span className={`text-xs font-bold tracking-wide uppercase ${st.cls}`}>
-                    {st.label}
-                  </span>
+                  <div className="grid grid-cols-3 gap-1 rounded-full border border-white/10 bg-black/20 p-0.5">
+                    {STATUSES.map((s) => (
+                      <button
+                        key={s.id}
+                        className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold tracking-wide uppercase transition-colors duration-200 ${statusBtnClasses(
+                          s.id,
+                          status === s.id
+                        )}`}
+                        onClick={() => selectedDay && onSetStatus(selectedDay, p, s.id)}
+                        aria-pressed={status === s.id}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               );
             })}
           </div>
           <p className="mt-3 text-center text-xs text-on-surface-dim">
-            To edit this day, use the arrows on the Today tab.
+            Tap a status to log or update this day.
           </p>
         </div>
       )}

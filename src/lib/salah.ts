@@ -191,6 +191,41 @@ export function statusBreakdown(
   return counts;
 }
 
+/**
+ * On time/late/missed/made-up counts for a period. There's no per-instance link
+ * between a missed day and a qada log, so "made up" is an aggregate estimate:
+ * whatever fraction of all-time misses (per prayer) have been paid off is applied
+ * to that prayer's missed count within the period. Same aggregate model as qadaOwed().
+ */
+export function statusBreakdownWithQada(
+  logs: PrayerLog[],
+  qadaLogs: QadaLog[],
+  from: Date,
+  to: Date
+): { on_time: number; late: number; missed: number; made_up: number } {
+  const map = buildLogMap(logs);
+  const base = statusBreakdown(logs, from, to);
+
+  const missedAllTime = Object.fromEntries(PRAYERS.map((p) => [p, 0])) as Record<Prayer, number>;
+  for (const l of logs) if (l.status === "missed") missedAllTime[l.prayer]++;
+  const qadaAllTime = Object.fromEntries(PRAYERS.map((p) => [p, 0])) as Record<Prayer, number>;
+  for (const q of qadaLogs) qadaAllTime[q.prayer]++;
+
+  const missedInPeriod = missedCounts(map, from, to);
+
+  let madeUp = 0;
+  let stillMissed = 0;
+  for (const p of PRAYERS) {
+    const madeUpAllTime = Math.min(missedAllTime[p], qadaAllTime[p]);
+    const ratio = missedAllTime[p] > 0 ? madeUpAllTime / missedAllTime[p] : 0;
+    const periodMadeUp = Math.round(missedInPeriod[p] * ratio);
+    madeUp += periodMadeUp;
+    stillMissed += missedInPeriod[p] - periodMadeUp;
+  }
+
+  return { on_time: base.on_time, late: base.late, missed: stillMissed, made_up: madeUp };
+}
+
 /** Missed prayers (all time) minus logged make-ups, floored at zero per prayer. */
 export function qadaOwed(logs: PrayerLog[], qadaLogs: QadaLog[]): Record<Prayer, number> {
   const owed = Object.fromEntries(PRAYERS.map((p) => [p, 0])) as Record<Prayer, number>;

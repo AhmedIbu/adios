@@ -11,14 +11,15 @@ import {
   longestStreak,
   missedCounts,
   qadaOwed,
-  statusBreakdown
+  statusBreakdownWithQada
 } from "../../lib/salah";
 import { PRAYER_META } from "./meta";
 
-const STATUS_COLORS: Record<"on_time" | "late" | "missed", string> = {
+const STATUS_COLORS: Record<"on_time" | "late" | "missed" | "made_up", string> = {
   on_time: "var(--color-primary)",
   late: "var(--color-tertiary-container)",
-  missed: "rgba(255,255,255,0.15)"
+  missed: "rgba(255,255,255,0.15)",
+  made_up: "var(--color-secondary)"
 };
 
 interface Props {
@@ -58,17 +59,18 @@ export function SalahStats({ logs, qadaLogs }: Props) {
     const today = new Date();
     if (range === "month") {
       const from = new Date(today.getFullYear(), today.getMonth(), 1);
-      return statusBreakdown(logs, from, today);
+      return statusBreakdownWithQada(logs, qadaLogs, from, today);
     }
     const first = firstLoggedDay(map);
-    if (!first) return { on_time: 0, late: 0, missed: 0 };
-    return statusBreakdown(logs, first, today);
-  }, [logs, map, range]);
+    if (!first) return { on_time: 0, late: 0, missed: 0, made_up: 0 };
+    return statusBreakdownWithQada(logs, qadaLogs, first, today);
+  }, [logs, qadaLogs, map, range]);
 
   const pieData = (
     [
       { key: "on_time", name: "On time", value: breakdown.on_time },
       { key: "late", name: "Late", value: breakdown.late },
+      { key: "made_up", name: "Made up", value: breakdown.made_up },
       { key: "missed", name: "Missed", value: breakdown.missed }
     ] as const
   ).filter((d) => d.value > 0);

@@ -10,8 +10,10 @@ import {
   weekComparison
 } from "../../lib/salah";
 import { computeDayTimes, deltaMinutes, formatDelta, hasLocation } from "../../lib/prayertimes";
+import type { Intention } from "../../lib/journal";
 import { PRAYER_META } from "./meta";
 import { SalahBreathing } from "./SalahBreathing";
+import { SalahIntentionRecorder } from "./SalahIntentionRecorder";
 
 interface Props {
   logs: PrayerLog[];
@@ -19,6 +21,53 @@ interface Props {
   onClearStatus: (day: string, prayer: Prayer) => void;
   onSetSunnah: (day: string, prayer: Prayer, sunnah: boolean) => void;
   settings: SalahSettingsRow | null;
+  intentions: Intention[];
+  onSaveIntentionText: (day: string, prayer: Prayer, text: string) => void;
+  onSaveIntentionAudio: (day: string, prayer: Prayer, blob: Blob) => void;
+  onGetIntentionAudioUrl: (path: string) => Promise<string>;
+}
+
+function IntentionRow({
+  intention,
+  onGetAudioUrl
+}: {
+  intention: Intention;
+  onGetAudioUrl: (path: string) => Promise<string>;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const meta = PRAYER_META[intention.prayer];
+
+  async function handleToggle() {
+    if (intention.audio_path && !audioUrl) {
+      try {
+        setAudioUrl(await onGetAudioUrl(intention.audio_path));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    setExpanded((v) => !v);
+  }
+
+  return (
+    <div className="rounded-xl border border-white/8 bg-surface-glass p-3">
+      <button className="flex w-full items-center justify-between" onClick={handleToggle}>
+        <div className="flex items-center gap-2.5">
+          <span className={`material-symbols-outlined text-lg ${meta.color}`}>{meta.icon}</span>
+          <span className="text-sm font-semibold text-on-surface">
+            {PRAYER_LABELS[intention.prayer]}
+          </span>
+        </div>
+        <span className="material-symbols-outlined text-on-surface-dim/60">
+          {expanded ? "expand_less" : "expand_more"}
+        </span>
+      </button>
+      {expanded && intention.text && (
+        <p className="mt-2 text-sm text-on-surface-dim">{intention.text}</p>
+      )}
+      {expanded && audioUrl && <audio className="mt-2 w-full" controls src={audioUrl} />}
+    </div>
+  );
 }
 
 const STATUSES: { id: PrayerStatus; label: string }[] = [
@@ -40,7 +89,17 @@ function statusClasses(status: PrayerStatus, active: boolean): string {
   }
 }
 
-export function SalahToday({ logs, onSetStatus, onClearStatus, onSetSunnah, settings }: Props) {
+export function SalahToday({
+  logs,
+  onSetStatus,
+  onClearStatus,
+  onSetSunnah,
+  settings,
+  intentions,
+  onSaveIntentionText,
+  onSaveIntentionAudio,
+  onGetIntentionAudioUrl
+}: Props) {
   const todayStr = toDayString(new Date());
   const map = useMemo(() => buildLogMap(logs), [logs]);
   const dayEntry = map.get(todayStr);
@@ -54,6 +113,15 @@ export function SalahToday({ logs, onSetStatus, onClearStatus, onSetSunnah, sett
   );
   const [khushu, setKhushuVal] = useState(7);
   const [sunnah, setSunnahVal] = useState(false);
+  const [intentionValue, setIntentionValue] = useState<{ text: string; audioBlob: Blob | null }>({
+    text: "",
+    audioBlob: null
+  });
+
+  const todaysIntentions = useMemo(
+    () => intentions.filter((i) => i.day === todayStr),
+    [intentions, todayStr]
+  );
 
   const todayTimes = useMemo(
     () => (hasLocation(settings) ? computeDayTimes(settings, new Date()) : null),
@@ -85,6 +153,7 @@ export function SalahToday({ logs, onSetStatus, onClearStatus, onSetSunnah, sett
     // Prayed (on time/late) — pause on a quick sheet to rate khushu / note sunnah.
     setKhushuVal(7);
     setSunnahVal(false);
+    setIntentionValue({ text: "", audioBlob: null });
     setSheet({ prayer: p, status });
   }
 
@@ -92,6 +161,11 @@ export function SalahToday({ logs, onSetStatus, onClearStatus, onSetSunnah, sett
     if (!sheet) return;
     onSetStatus(todayStr, sheet.prayer, sheet.status, rate ? khushu : undefined);
     if (rate && sunnah) onSetSunnah(todayStr, sheet.prayer, true);
+    if (intentionValue.text.trim()) {
+      onSaveIntentionText(todayStr, sheet.prayer, intentionValue.text.trim());
+    } else if (intentionValue.audioBlob) {
+      onSaveIntentionAudio(todayStr, sheet.prayer, intentionValue.audioBlob);
+    }
     easeOut(sheet.prayer);
     setSheet(null);
   }
@@ -293,6 +367,18 @@ export function SalahToday({ logs, onSetStatus, onClearStatus, onSetSunnah, sett
 
       {breathingOpen && <SalahBreathing onClose={() => setBreathingOpen(false)} />}
 
+      {/* Today's intentions — tap to replay/read what you noted when logging. */}
+      {todaysIntentions.length > 0 && (
+        <div className="mt-3 space-y-2">
+          <p className="px-1 text-[11px] font-extrabold tracking-widest text-on-surface-dim uppercase">
+            Today's intentions
+          </p>
+          {todaysIntentions.map((it) => (
+            <IntentionRow key={it.id} intention={it} onGetAudioUrl={onGetIntentionAudioUrl} />
+          ))}
+        </div>
+      )}
+
       {/* Khushu / sunnah quick sheet, shown after marking a prayer on time/late. */}
       {sheet && (
         <div
@@ -360,6 +446,11 @@ export function SalahToday({ logs, onSetStatus, onClearStatus, onSetSunnah, sett
                   />
                 </span>
               </button>
+
+              <SalahIntentionRecorder
+                key={`${sheet.prayer}-${sheet.status}`}
+                onChange={setIntentionValue}
+              />
 
               <div className="mt-6 flex gap-3">
                 <button

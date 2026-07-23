@@ -2,6 +2,9 @@ import { useState } from "react";
 import { toDayString } from "../../lib/salah";
 import { dailyReminder } from "../../lib/reminders";
 import type { ReminderCategory } from "../../lib/reminders";
+import type { AnsweredDua, Reflection } from "../../lib/journal";
+import { SalahReflection } from "./SalahReflection";
+import { SalahDuas } from "./SalahDuas";
 
 const CATEGORY_CHIP: Record<ReminderCategory, { label: string; cls: string }> = {
   quran: { label: "Quran", cls: "bg-primary-container text-on-primary-container" },
@@ -9,7 +12,21 @@ const CATEGORY_CHIP: Record<ReminderCategory, { label: string; cls: string }> = 
   quote: { label: "Quote", cls: "bg-tertiary-container text-on-tertiary-container" }
 };
 
-export function SalahReminder() {
+interface Props {
+  reflections: Reflection[];
+  onSaveReflection: (day: string, prompt: string, text: string) => Promise<void>;
+  duas: AnsweredDua[];
+  onAddDua: (text: string) => Promise<void>;
+  onMarkDuaAnswered: (id: string) => Promise<void>;
+}
+
+export function SalahReminder({
+  reflections,
+  onSaveReflection,
+  duas,
+  onAddDua,
+  onMarkDuaAnswered
+}: Props) {
   const [copied, setCopied] = useState(false);
   const today = new Date();
   const reminder = dailyReminder(toDayString(today));
@@ -32,8 +49,8 @@ export function SalahReminder() {
   }
 
   return (
-    <section className="flex min-h-[60vh] flex-col items-center justify-center">
-      <p className="mb-8 text-[11px] font-extrabold tracking-[0.2em] text-on-surface-dim/70 uppercase">
+    <section className="flex flex-col items-center gap-6">
+      <p className="text-[11px] font-extrabold tracking-[0.2em] text-on-surface-dim/70 uppercase">
         {dateLabel}
       </p>
 
@@ -78,11 +95,12 @@ export function SalahReminder() {
         </div>
       </div>
 
-      <div className="mt-10 flex items-center gap-2 opacity-30">
-        <span className="material-symbols-outlined text-sm">auto_awesome</span>
-        <span className="text-[11px] font-extrabold tracking-widest uppercase">
-          Reflection of the day
-        </span>
+      <div className="w-full max-w-md">
+        <SalahReflection reflections={reflections} onSave={onSaveReflection} />
+      </div>
+
+      <div className="w-full max-w-md">
+        <SalahDuas duas={duas} onAdd={onAddDua} onMarkAnswered={onMarkDuaAnswered} />
       </div>
     </section>
   );

@@ -10,6 +10,18 @@ import {
   setSunnah,
   upsertSalahSettings
 } from "../../lib/salah";
+import type { AnsweredDua, Intention, Reflection } from "../../lib/journal";
+import {
+  addDua,
+  intentionAudioUrl,
+  listAnsweredDuas,
+  listIntentions,
+  listReflections,
+  markDuaAnswered,
+  saveIntentionAudio,
+  saveIntentionText,
+  saveReflection
+} from "../../lib/journal";
 import { vibrate } from "../../lib/haptics";
 import { SalahToday } from "./SalahToday";
 import { SalahHistory } from "./SalahHistory";
@@ -34,6 +46,9 @@ export function SalahView() {
   const [logs, setLogs] = useState<PrayerLog[]>([]);
   const [qadaLogs, setQadaLogs] = useState<QadaLog[]>([]);
   const [settings, setSettings] = useState<SalahSettingsRow | null>(null);
+  const [reflections, setReflections] = useState<Reflection[]>([]);
+  const [duas, setDuas] = useState<AnsweredDua[]>([]);
+  const [intentions, setIntentions] = useState<Intention[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -52,15 +67,49 @@ export function SalahView() {
       })
       .finally(() => setLoading(false));
 
-    // Optional table — degrade silently if Phase C's migration hasn't been run yet.
+    // Optional tables — degrade silently if their migration hasn't been run yet.
     getSalahSettings()
       .then(setSettings)
+      .catch((e) => console.error(e));
+    listReflections()
+      .then(setReflections)
+      .catch((e) => console.error(e));
+    listAnsweredDuas()
+      .then(setDuas)
+      .catch((e) => console.error(e));
+    listIntentions()
+      .then(setIntentions)
       .catch((e) => console.error(e));
   }, []);
 
   const handleSaveSettings = useCallback(async (next: SalahSettingsRow) => {
     const saved = await upsertSalahSettings(next);
     setSettings(saved);
+  }, []);
+
+  const handleSaveReflection = useCallback(async (day: string, prompt: string, text: string) => {
+    const saved = await saveReflection(day, prompt, text);
+    setReflections((rs) => [saved, ...rs.filter((r) => r.day !== day)]);
+  }, []);
+
+  const handleAddDua = useCallback(async (text: string) => {
+    const saved = await addDua(text);
+    setDuas((ds) => [saved, ...ds]);
+  }, []);
+
+  const handleMarkDuaAnswered = useCallback(async (id: string) => {
+    const saved = await markDuaAnswered(id);
+    setDuas((ds) => ds.map((d) => (d.id === id ? saved : d)));
+  }, []);
+
+  const handleSaveIntentionText = useCallback(async (day: string, prayer: Prayer, text: string) => {
+    const saved = await saveIntentionText(day, prayer, text);
+    setIntentions((is) => [saved, ...is.filter((i) => !(i.day === day && i.prayer === prayer))]);
+  }, []);
+
+  const handleSaveIntentionAudio = useCallback(async (day: string, prayer: Prayer, blob: Blob) => {
+    const saved = await saveIntentionAudio(day, prayer, blob);
+    setIntentions((is) => [saved, ...is.filter((i) => !(i.day === day && i.prayer === prayer))]);
   }, []);
 
   const handleSetStatus = useCallback(
@@ -148,6 +197,10 @@ export function SalahView() {
               onClearStatus={handleClearStatus}
               onSetSunnah={handleSetSunnah}
               settings={settings}
+              intentions={intentions}
+              onSaveIntentionText={handleSaveIntentionText}
+              onSaveIntentionAudio={handleSaveIntentionAudio}
+              onGetIntentionAudioUrl={intentionAudioUrl}
             />
           )}
           {tab === "history" && (
@@ -168,7 +221,15 @@ export function SalahView() {
               />
             </Suspense>
           )}
-          {tab === "reminder" && <SalahReminder />}
+          {tab === "reminder" && (
+            <SalahReminder
+              reflections={reflections}
+              onSaveReflection={handleSaveReflection}
+              duas={duas}
+              onAddDua={handleAddDua}
+              onMarkDuaAnswered={handleMarkDuaAnswered}
+            />
+          )}
         </>
       )}
 

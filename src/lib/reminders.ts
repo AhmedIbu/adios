@@ -142,11 +142,38 @@ export const REMINDERS: Reminder[] = [
   }
 ];
 
-/** Same reminder for the whole calendar day; changes when the date changes. */
-export function dailyReminder(dayString: string): Reminder {
+function hashDay(dayString: string): number {
   let hash = 0;
   for (let i = 0; i < dayString.length; i++) {
     hash = (hash * 31 + dayString.charCodeAt(i)) >>> 0;
   }
-  return REMINDERS[hash % REMINDERS.length];
+  return hash;
+}
+
+/** Same reminder for the whole calendar day; changes when the date changes. */
+export function dailyReminder(dayString: string): Reminder {
+  return REMINDERS[hashDay(dayString) % REMINDERS.length];
+}
+
+export const REFLECTION_PROMPTS: string[] = [
+  "What are you grateful for today?",
+  "What's one thing that tested your patience today?",
+  "Where did you feel closest to Allah today?",
+  "What's a small good deed you did today?",
+  "What's weighing on you right now?",
+  "What do you want to ask Allah for tonight?",
+  "Who could you check in on tomorrow?",
+  "What distracted you most from your prayers today?",
+  "What's something you learned today?",
+  "What would you tell yourself from a year ago?",
+  "What's a habit you want to build?",
+  "Where did you see Allah's mercy today?",
+  "What's something you need to let go of?",
+  "What made you smile today?",
+  "What's one thing you could do better tomorrow?"
+];
+
+/** Same prompt for the whole calendar day — offset from the reminder hash so they don't sync. */
+export function dailyPrompt(dayString: string): string {
+  return REFLECTION_PROMPTS[(hashDay(dayString) + 7) % REFLECTION_PROMPTS.length];
 }

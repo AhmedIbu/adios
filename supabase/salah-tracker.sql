@@ -108,3 +108,79 @@ create policy "own salah_settings: insert" on public.salah_settings
   for insert with check (auth.uid() = user_id);
 create policy "own salah_settings: update" on public.salah_settings
   for update using (auth.uid() = user_id);
+
+-- ---------------------------------------------------------------------------
+-- Phase D additions: daily reflection journal, an answered-duas ledger, and
+-- optional per-prayer intentions (typed or a short voice note).
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.reflections (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  day date not null,
+  prompt text not null,
+  text text not null,
+  created_at timestamptz not null default now(),
+  unique (user_id, day)
+);
+
+alter table public.reflections enable row level security;
+
+create policy "own reflections: select" on public.reflections
+  for select using (auth.uid() = user_id);
+create policy "own reflections: insert" on public.reflections
+  for insert with check (auth.uid() = user_id);
+create policy "own reflections: update" on public.reflections
+  for update using (auth.uid() = user_id);
+
+create table if not exists public.answered_duas (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  text text not null,
+  asked_at timestamptz not null default now(),
+  answered_at timestamptz
+);
+
+alter table public.answered_duas enable row level security;
+
+create policy "own answered_duas: select" on public.answered_duas
+  for select using (auth.uid() = user_id);
+create policy "own answered_duas: insert" on public.answered_duas
+  for insert with check (auth.uid() = user_id);
+create policy "own answered_duas: update" on public.answered_duas
+  for update using (auth.uid() = user_id);
+create policy "own answered_duas: delete" on public.answered_duas
+  for delete using (auth.uid() = user_id);
+
+create table if not exists public.intentions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  day date not null,
+  prayer text not null check (prayer in ('fajr', 'dhuhr', 'asr', 'maghrib', 'isha', 'tahajjud')),
+  text text,
+  audio_path text,
+  created_at timestamptz not null default now(),
+  unique (user_id, day, prayer)
+);
+
+alter table public.intentions enable row level security;
+
+create policy "own intentions: select" on public.intentions
+  for select using (auth.uid() = user_id);
+create policy "own intentions: insert" on public.intentions
+  for insert with check (auth.uid() = user_id);
+create policy "own intentions: update" on public.intentions
+  for update using (auth.uid() = user_id);
+
+-- Private bucket for voice-note intentions — same user-scoped path pattern as
+-- the 'audio' bucket in setup.sql.
+insert into storage.buckets (id, name, public)
+values ('salah-audio', 'salah-audio', false)
+on conflict (id) do nothing;
+
+create policy "own salah-audio: read" on storage.objects
+  for select using (bucket_id = 'salah-audio' and auth.uid()::text = (storage.foldername(name))[1]);
+create policy "own salah-audio: upload" on storage.objects
+  for insert with check (bucket_id = 'salah-audio' and auth.uid()::text = (storage.foldername(name))[1]);
+create policy "own salah-audio: delete" on storage.objects
+  for delete using (bucket_id = 'salah-audio' and auth.uid()::text = (storage.foldername(name))[1]);

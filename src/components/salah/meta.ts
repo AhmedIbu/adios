@@ -13,5 +13,6 @@ export const PRAYER_META: Record<Prayer, PrayerMeta> = {
   dhuhr: { icon: "light_mode", color: "text-primary", iconBg: "bg-primary/10" },
   asr: { icon: "flare", color: "text-secondary", iconBg: "bg-secondary/10" },
   maghrib: { icon: "nights_stay", color: "text-[#f0a8bf]", iconBg: "bg-[#f0a8bf]/10" },
-  isha: { icon: "bedtime", color: "text-on-primary-container", iconBg: "bg-primary-container/20" }
+  isha: { icon: "bedtime", color: "text-on-primary-container", iconBg: "bg-primary-container/20" },
+  tahajjud: { icon: "dark_mode", color: "text-secondary", iconBg: "bg-secondary/10" }
 };

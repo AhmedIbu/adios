@@ -39,3 +39,44 @@ create policy "own qada_logs: insert" on public.qada_logs
   for insert with check (auth.uid() = user_id);
 create policy "own qada_logs: delete" on public.qada_logs
   for delete using (auth.uid() = user_id);
+
+-- ---------------------------------------------------------------------------
+-- Phase A additions: khushu (focus) rating, sunnah tracking, optional Tahajjud
+-- slot. Safe to re-run — uses IF NOT EXISTS / a DO block to find and replace
+-- the prayer check by definition rather than by a guessed constraint name.
+-- ---------------------------------------------------------------------------
+
+alter table public.prayer_logs
+  add column if not exists khushu smallint,
+  add column if not exists sunnah boolean not null default false;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.prayer_logs'::regclass
+      and conname = 'prayer_logs_khushu_range'
+  ) then
+    alter table public.prayer_logs
+      add constraint prayer_logs_khushu_range check (khushu is null or (khushu between 1 and 10));
+  end if;
+end $$;
+
+-- Widen the prayer check to also allow the optional Tahajjud slot.
+do $$
+declare
+  con record;
+begin
+  for con in
+    select conname
+    from pg_constraint
+    where conrelid = 'public.prayer_logs'::regclass
+      and pg_get_constraintdef(oid) like '%prayer = ANY%'
+  loop
+    execute format('alter table public.prayer_logs drop constraint %I', con.conname);
+  end loop;
+end $$;
+
+alter table public.prayer_logs
+  add constraint prayer_logs_prayer_check
+  check (prayer in ('fajr', 'dhuhr', 'asr', 'maghrib', 'isha', 'tahajjud'));

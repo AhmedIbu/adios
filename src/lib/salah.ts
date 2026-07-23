@@ -1,7 +1,11 @@
 import { supabase } from "./supabase";
 
 export const PRAYERS = ["fajr", "dhuhr", "asr", "maghrib", "isha"] as const;
-export type Prayer = (typeof PRAYERS)[number];
+export type CorePrayer = (typeof PRAYERS)[number];
+/** Bonus slot — never counted in isDayComplete/prayedCount/the 5-prayer streak. */
+export const OPTIONAL_PRAYERS = ["tahajjud"] as const;
+export type OptionalPrayer = (typeof OPTIONAL_PRAYERS)[number];
+export type Prayer = CorePrayer | OptionalPrayer;
 export type PrayerStatus = "on_time" | "late" | "missed";
 
 export interface PrayerLog {
@@ -9,6 +13,10 @@ export interface PrayerLog {
   day: string; // YYYY-MM-DD
   prayer: Prayer;
   status: PrayerStatus;
+  /** Self-rated focus, 1–10. Null until the user rates it (rating is optional). */
+  khushu: number | null;
+  /** Whether the sunnah rakats were also prayed alongside the fard. */
+  sunnah: boolean;
 }
 
 export interface QadaLog {
@@ -22,7 +30,8 @@ export const PRAYER_LABELS: Record<Prayer, string> = {
   dhuhr: "Dhuhr",
   asr: "Asr",
   maghrib: "Maghrib",
-  isha: "Isha"
+  isha: "Isha",
+  tahajjud: "Tahajjud"
 };
 
 // ---------- CRUD ----------
@@ -30,7 +39,7 @@ export const PRAYER_LABELS: Record<Prayer, string> = {
 export async function listPrayerLogs(): Promise<PrayerLog[]> {
   const { data, error } = await supabase
     .from("prayer_logs")
-    .select("id, day, prayer, status")
+    .select("id, day, prayer, status, khushu, sunnah")
     .order("day", { ascending: true });
   if (error) throw error;
   return (data ?? []) as PrayerLog[];
@@ -39,15 +48,30 @@ export async function listPrayerLogs(): Promise<PrayerLog[]> {
 export async function setPrayerStatus(
   day: string,
   prayer: Prayer,
-  status: PrayerStatus
+  status: PrayerStatus,
+  khushu?: number
 ): Promise<PrayerLog> {
+  const row: Record<string, unknown> = { day, prayer, status };
+  if (khushu !== undefined) row.khushu = khushu;
   const { data, error } = await supabase
     .from("prayer_logs")
-    .upsert({ day, prayer, status }, { onConflict: "user_id,day,prayer" })
-    .select("id, day, prayer, status")
+    .upsert(row, { onConflict: "user_id,day,prayer" })
+    .select("id, day, prayer, status, khushu, sunnah")
     .single();
   if (error) throw error;
   return data as PrayerLog;
+}
+
+/** Un-logs a prayer entirely — used to untoggle the optional Tahajjud slot. */
+export async function clearPrayerStatus(day: string, prayer: Prayer): Promise<void> {
+  const { error } = await supabase.from("prayer_logs").delete().match({ day, prayer });
+  if (error) throw error;
+}
+
+/** The row must already exist (i.e. the prayer was already logged as prayed). */
+export async function setSunnah(day: string, prayer: Prayer, sunnah: boolean): Promise<void> {
+  const { error } = await supabase.from("prayer_logs").update({ sunnah }).match({ day, prayer });
+  if (error) throw error;
 }
 
 export async function listQadaLogs(): Promise<QadaLog[]> {
@@ -232,4 +256,100 @@ export function qadaOwed(logs: PrayerLog[], qadaLogs: QadaLog[]): Record<Prayer,
   for (const l of logs) if (l.status === "missed") owed[l.prayer]++;
   for (const q of qadaLogs) owed[q.prayer] = Math.max(0, owed[q.prayer] - 1);
   return owed;
+}
+
+export interface QadaBacklogItem {
+  day: string;
+  prayer: CorePrayer;
+}
+
+/**
+ * A concrete, oldest-first list of specific missed days still outstanding.
+ * There's no per-instance link between a missed day and a qada log (same
+ * limitation as qadaOwed/statusBreakdownWithQada), so this pays off each
+ * prayer's OLDEST misses first, up to however many qada logs exist for
+ * that prayer — a FIFO burn-down, not an exact record of which day was paid.
+ */
+export function qadaBacklog(logs: PrayerLog[], qadaLogs: QadaLog[]): QadaBacklogItem[] {
+  const qadaCounts = Object.fromEntries(PRAYERS.map((p) => [p, 0])) as Record<CorePrayer, number>;
+  for (const q of qadaLogs) {
+    if ((PRAYERS as readonly string[]).includes(q.prayer)) {
+      qadaCounts[q.prayer as CorePrayer]++;
+    }
+  }
+
+  const backlog: QadaBacklogItem[] = [];
+  for (const p of PRAYERS) {
+    const missed = logs
+      .filter((l) => l.prayer === p && l.status === "missed")
+      .sort((a, b) => a.day.localeCompare(b.day));
+    const remaining = missed.slice(qadaCounts[p]);
+    for (const m of remaining) backlog.push({ day: m.day, prayer: p });
+  }
+  return backlog.sort((a, b) => a.day.localeCompare(b.day));
+}
+
+/** Consecutive days ending today (or yesterday) with a logged Tahajjud. */
+export function tahajjudStreak(logs: PrayerLog[], today: Date): number {
+  const days = new Set(logs.filter((l) => l.prayer === "tahajjud").map((l) => l.day));
+  let streak = 0;
+  const cursor = new Date(today);
+  if (!days.has(toDayString(cursor))) cursor.setDate(cursor.getDate() - 1);
+  while (days.has(toDayString(cursor))) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
+/** Average self-rated khushu across all core-prayer logs in the period, or null if none rated. */
+export function averageKhushu(logs: PrayerLog[], from: Date, to: Date): number | null {
+  const fromStr = toDayString(from);
+  const toStr = toDayString(to);
+  const vals = logs
+    .filter((l) => l.day >= fromStr && l.day <= toStr && l.khushu != null)
+    .map((l) => l.khushu as number);
+  if (vals.length === 0) return null;
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
+}
+
+/** Day-by-day average khushu within the period, for a trend line. Skips unrated days. */
+export function khushuTrendSeries(
+  logs: PrayerLog[],
+  from: Date,
+  to: Date
+): { day: string; avg: number }[] {
+  const fromStr = toDayString(from);
+  const toStr = toDayString(to);
+  const byDay = new Map<string, number[]>();
+  for (const l of logs) {
+    if (l.khushu == null) continue;
+    if (l.day < fromStr || l.day > toStr) continue;
+    const arr = byDay.get(l.day) ?? [];
+    arr.push(l.khushu);
+    byDay.set(l.day, arr);
+  }
+  return [...byDay.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([day, vals]) => ({ day, avg: vals.reduce((a, b) => a + b, 0) / vals.length }));
+}
+
+/** How often the sunnah rakats were prayed alongside a completed fard, in the period. */
+export function sunnahStats(
+  logs: PrayerLog[],
+  from: Date,
+  to: Date
+): { prayedWithSunnah: number; totalPrayed: number } {
+  const fromStr = toDayString(from);
+  const toStr = toDayString(to);
+  let prayedWithSunnah = 0;
+  let totalPrayed = 0;
+  for (const l of logs) {
+    if (l.day < fromStr || l.day > toStr) continue;
+    if (l.status === "on_time" || l.status === "late") {
+      totalPrayed++;
+      if (l.sunnah) prayedWithSunnah++;
+    }
+  }
+  return { prayedWithSunnah, totalPrayed };
 }

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { Prayer, PrayerLog, PrayerStatus } from "../../lib/salah";
+import type { CorePrayer, Prayer, PrayerLog, PrayerStatus } from "../../lib/salah";
 import {
   PRAYERS,
   PRAYER_LABELS,
@@ -12,7 +12,9 @@ import { PRAYER_META } from "./meta";
 
 interface Props {
   logs: PrayerLog[];
-  onSetStatus: (day: string, prayer: Prayer, status: PrayerStatus) => void;
+  onSetStatus: (day: string, prayer: Prayer, status: PrayerStatus, khushu?: number) => void;
+  onClearStatus: (day: string, prayer: Prayer) => void;
+  onSetSunnah: (day: string, prayer: Prayer, sunnah: boolean) => void;
 }
 
 const STATUSES: { id: PrayerStatus; label: string }[] = [
@@ -34,19 +36,23 @@ function statusClasses(status: PrayerStatus, active: boolean): string {
   }
 }
 
-export function SalahToday({ logs, onSetStatus }: Props) {
+export function SalahToday({ logs, onSetStatus, onClearStatus, onSetSunnah }: Props) {
   const todayStr = toDayString(new Date());
   const map = useMemo(() => buildLogMap(logs), [logs]);
   const dayEntry = map.get(todayStr);
   const prayed = prayedCount(dayEntry);
   const streak = useMemo(() => currentStreak(map, new Date()), [map]);
   const [leaving, setLeaving] = useState<Set<Prayer>>(new Set());
+  const [sheet, setSheet] = useState<{ prayer: CorePrayer; status: "on_time" | "late" } | null>(
+    null
+  );
+  const [khushu, setKhushuVal] = useState(7);
+  const [sunnah, setSunnahVal] = useState(false);
 
   const pct = (prayed / PRAYERS.length) * 100;
   const circumference = 2 * Math.PI * 40;
 
-  function handleSetStatus(p: Prayer, status: PrayerStatus) {
-    onSetStatus(todayStr, p, status);
+  function easeOut(p: Prayer) {
     setLeaving((prev) => new Set(prev).add(p));
     window.setTimeout(() => {
       setLeaving((prev) => {
@@ -57,8 +63,35 @@ export function SalahToday({ logs, onSetStatus }: Props) {
     }, 320);
   }
 
+  function handleSetStatus(p: CorePrayer, status: PrayerStatus) {
+    if (status === "missed") {
+      onSetStatus(todayStr, p, status);
+      easeOut(p);
+      return;
+    }
+    // Prayed (on time/late) — pause on a quick sheet to rate khushu / note sunnah.
+    setKhushuVal(7);
+    setSunnahVal(false);
+    setSheet({ prayer: p, status });
+  }
+
+  function confirmSheet(rate: boolean) {
+    if (!sheet) return;
+    onSetStatus(todayStr, sheet.prayer, sheet.status, rate ? khushu : undefined);
+    if (rate && sunnah) onSetSunnah(todayStr, sheet.prayer, true);
+    easeOut(sheet.prayer);
+    setSheet(null);
+  }
+
+  function toggleTahajjud() {
+    const done = dayEntry?.tahajjud === "on_time";
+    if (done) onClearStatus(todayStr, "tahajjud");
+    else onSetStatus(todayStr, "tahajjud", "on_time");
+  }
+
   const isLoggedToday = (p: Prayer) => !!dayEntry?.[p];
   const visiblePrayers = PRAYERS.filter((p) => !isLoggedToday(p) || leaving.has(p));
+  const tahajjudDone = dayEntry?.tahajjud === "on_time";
 
   return (
     <section>
@@ -190,6 +223,108 @@ export function SalahToday({ logs, onSetStatus }: Props) {
           );
         })}
       </div>
+
+      {/* Tahajjud — optional bonus slot, never affects the 5-prayer streak. */}
+      <button
+        className={`mt-3 flex w-full items-center gap-3.5 rounded-2xl border p-4 text-left transition-colors duration-200 ${
+          tahajjudDone
+            ? "border-secondary/30 bg-secondary/10"
+            : "border-white/8 bg-surface-glass hover:bg-white/5"
+        }`}
+        onClick={toggleTahajjud}
+      >
+        <div
+          className={`flex h-11 w-11 items-center justify-center rounded-full border border-white/10 ${PRAYER_META.tahajjud.iconBg} ${PRAYER_META.tahajjud.color}`}
+        >
+          <span className="material-symbols-outlined is-filled">
+            {PRAYER_META.tahajjud.icon}
+          </span>
+        </div>
+        <div className="flex-1">
+          <h4 className="text-base font-bold text-on-surface">Tahajjud</h4>
+          <p className="text-xs text-on-surface-dim">Optional night prayer</p>
+        </div>
+        <span
+          className={`material-symbols-outlined ${tahajjudDone ? "is-filled text-secondary" : "text-on-surface-dim/20"}`}
+        >
+          {tahajjudDone ? "check_circle" : "radio_button_unchecked"}
+        </span>
+      </button>
+
+      {/* Khushu / sunnah quick sheet, shown after marking a prayer on time/late. */}
+      {sheet && (
+        <div
+          className="fixed inset-0 z-[80] flex items-end bg-black/50 backdrop-blur-sm"
+          onClick={() => confirmSheet(false)}
+        >
+          <div
+            className="mx-auto w-full max-w-xl rounded-t-3xl bg-surface pb-8 shadow-2xl"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="h-1 w-10 rounded-full bg-white/20" />
+            </div>
+            <h3 className="px-5 pt-2 pb-1 text-center text-base font-semibold text-on-surface">
+              How was your {PRAYER_LABELS[sheet.prayer]}?
+            </h3>
+            <p className="px-5 pb-4 text-center text-xs text-on-surface-dim">
+              Optional — rate your focus and note the sunnah.
+            </p>
+            <div className="px-6">
+              <div className="mb-1 flex items-center justify-between">
+                <span className="text-[11px] font-extrabold tracking-widest text-on-surface-dim uppercase">
+                  Focus
+                </span>
+                <span className="text-sm font-bold text-primary">{khushu}/10</span>
+              </div>
+              <input
+                type="range"
+                min={1}
+                max={10}
+                value={khushu}
+                onChange={(e) => setKhushuVal(Number(e.target.value))}
+                className="w-full accent-primary"
+              />
+
+              <button
+                className="mt-5 flex w-full items-center justify-between rounded-2xl border border-white/8 bg-white/5 px-4 py-3"
+                onClick={() => setSunnahVal((v) => !v)}
+              >
+                <span className="text-sm font-semibold text-on-surface">
+                  I also prayed the sunnah
+                </span>
+                <span
+                  className={`flex h-6 w-11 flex-none items-center rounded-full p-0.5 transition-colors ${
+                    sunnah ? "bg-primary" : "bg-white/15"
+                  }`}
+                >
+                  <span
+                    className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                      sunnah ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
+                </span>
+              </button>
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  className="flex-1 rounded-full border border-white/10 py-3 text-sm font-bold text-on-surface-dim"
+                  onClick={() => confirmSheet(false)}
+                >
+                  Skip
+                </button>
+                <button
+                  className="flex-1 rounded-full bg-primary py-3 text-sm font-bold text-on-primary"
+                  onClick={() => confirmSheet(true)}
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

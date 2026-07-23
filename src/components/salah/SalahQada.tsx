@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { Prayer, PrayerLog, QadaLog } from "../../lib/salah";
-import { PRAYERS, PRAYER_LABELS, qadaOwed } from "../../lib/salah";
+import { PRAYERS, PRAYER_LABELS, qadaBacklog, qadaOwed } from "../../lib/salah";
 import { PRAYER_META } from "./meta";
 
 interface Props {
@@ -14,6 +14,7 @@ export function SalahQada({ logs, qadaLogs, onLogQada }: Props) {
   const owed = useMemo(() => qadaOwed(logs, qadaLogs), [logs, qadaLogs]);
   const totalOwed = PRAYERS.reduce((sum, p) => sum + owed[p], 0);
   const recent = qadaLogs.slice(0, 5);
+  const backlog = useMemo(() => qadaBacklog(logs, qadaLogs), [logs, qadaLogs]);
 
   return (
     <section>
@@ -69,6 +70,50 @@ export function SalahQada({ logs, qadaLogs, onLogQada }: Props) {
           Total remaining: {totalOwed} {totalOwed === 1 ? "prayer" : "prayers"}
         </p>
       </div>
+
+      {/* Backlog — oldest missed prayers still outstanding, burn-down style */}
+      {backlog.length > 0 && (
+        <div className="mt-10">
+          <h3 className="mb-1 text-lg font-bold text-on-surface">Backlog</h3>
+          <p className="mb-4 text-sm text-on-surface-dim">
+            Oldest missed prayers first — since qada isn't tied to a specific day, this pays
+            off each prayer's earliest misses first.
+          </p>
+          <div className="space-y-2">
+            {backlog.slice(0, 20).map((item, i) => {
+              const meta = PRAYER_META[item.prayer];
+              return (
+                <div
+                  key={`${item.day}-${item.prayer}-${i}`}
+                  className="flex items-center justify-between rounded-xl border border-white/8 bg-surface-glass p-3.5 backdrop-blur-md"
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`flex h-9 w-9 items-center justify-center rounded-full ${meta.iconBg} ${meta.color}`}
+                    >
+                      <span className="material-symbols-outlined text-lg">{meta.icon}</span>
+                    </div>
+                    <p className="text-sm font-bold text-on-surface">
+                      {PRAYER_LABELS[item.prayer]}
+                    </p>
+                  </div>
+                  <p className="text-xs text-on-surface-dim">
+                    {new Date(item.day + "T00:00:00").toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric"
+                    })}
+                  </p>
+                </div>
+              );
+            })}
+            {backlog.length > 20 && (
+              <p className="pt-1 text-center text-xs text-on-surface-dim">
+                +{backlog.length - 20} more
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Recent logs */}
       {recent.length > 0 && (

@@ -1,6 +1,13 @@
 import { Suspense, lazy, useEffect, useState, useCallback } from "react";
 import type { Prayer, PrayerLog, PrayerStatus, QadaLog } from "../../lib/salah";
-import { listPrayerLogs, listQadaLogs, logQada, setPrayerStatus } from "../../lib/salah";
+import {
+  clearPrayerStatus,
+  listPrayerLogs,
+  listQadaLogs,
+  logQada,
+  setPrayerStatus,
+  setSunnah
+} from "../../lib/salah";
 import { vibrate } from "../../lib/haptics";
 import { SalahToday } from "./SalahToday";
 import { SalahHistory } from "./SalahHistory";
@@ -44,15 +51,15 @@ export function SalahView() {
   }, []);
 
   const handleSetStatus = useCallback(
-    async (day: string, prayer: Prayer, status: PrayerStatus) => {
+    async (day: string, prayer: Prayer, status: PrayerStatus, khushu?: number) => {
       // Optimistic: swap in a temp row immediately, reconcile with the real one.
       const tempId = `temp-${day}-${prayer}`;
       setLogs((ls) => {
         const rest = ls.filter((l) => !(l.day === day && l.prayer === prayer));
-        return [...rest, { id: tempId, day, prayer, status }];
+        return [...rest, { id: tempId, day, prayer, status, khushu: khushu ?? null, sunnah: false }];
       });
       try {
-        const saved = await setPrayerStatus(day, prayer, status);
+        const saved = await setPrayerStatus(day, prayer, status, khushu);
         setLogs((ls) => ls.map((l) => (l.id === tempId ? saved : l)));
       } catch (e) {
         console.error(e);
@@ -62,6 +69,32 @@ export function SalahView() {
     },
     []
   );
+
+  /** Untoggle a logged prayer entirely — used for the optional Tahajjud slot. */
+  const handleClearStatus = useCallback(async (day: string, prayer: Prayer) => {
+    const removed = logs.find((l) => l.day === day && l.prayer === prayer);
+    setLogs((ls) => ls.filter((l) => !(l.day === day && l.prayer === prayer)));
+    try {
+      await clearPrayerStatus(day, prayer);
+    } catch (e) {
+      console.error(e);
+      if (removed) setLogs((ls) => [...ls, removed]);
+      alert("Couldn't update — check your connection.");
+    }
+  }, [logs]);
+
+  const handleSetSunnah = useCallback(async (day: string, prayer: Prayer, sunnah: boolean) => {
+    setLogs((ls) => ls.map((l) => (l.day === day && l.prayer === prayer ? { ...l, sunnah } : l)));
+    try {
+      await setSunnah(day, prayer, sunnah);
+    } catch (e) {
+      console.error(e);
+      setLogs((ls) =>
+        ls.map((l) => (l.day === day && l.prayer === prayer ? { ...l, sunnah: !sunnah } : l))
+      );
+      alert("Couldn't save — check your connection.");
+    }
+  }, []);
 
   const handleLogQada = useCallback(async (prayer: Prayer) => {
     try {
@@ -84,7 +117,14 @@ export function SalahView() {
       )}
       {!loading && !loadError && (
         <>
-          {tab === "today" && <SalahToday logs={logs} onSetStatus={handleSetStatus} />}
+          {tab === "today" && (
+            <SalahToday
+              logs={logs}
+              onSetStatus={handleSetStatus}
+              onClearStatus={handleClearStatus}
+              onSetSunnah={handleSetSunnah}
+            />
+          )}
           {tab === "history" && (
             <SalahHistory logs={logs} onSetStatus={handleSetStatus} />
           )}

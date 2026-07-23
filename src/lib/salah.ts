@@ -176,6 +176,21 @@ export function missedCounts(map: LogMap, from: Date, to: Date): Record<Prayer, 
   return counts;
 }
 
+/** Count of logged prayers by status within from/to (inclusive), across all prayers. */
+export function statusBreakdown(
+  logs: PrayerLog[],
+  from: Date,
+  to: Date
+): Record<PrayerStatus, number> {
+  const fromStr = toDayString(from);
+  const toStr = toDayString(to);
+  const counts: Record<PrayerStatus, number> = { on_time: 0, late: 0, missed: 0 };
+  for (const l of logs) {
+    if (l.day >= fromStr && l.day <= toStr) counts[l.status]++;
+  }
+  return counts;
+}
+
 /** Missed prayers (all time) minus logged make-ups, floored at zero per prayer. */
 export function qadaOwed(logs: PrayerLog[], qadaLogs: QadaLog[]): Record<Prayer, number> {
   const owed = Object.fromEntries(PRAYERS.map((p) => [p, 0])) as Record<Prayer, number>;

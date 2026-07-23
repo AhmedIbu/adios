@@ -1,12 +1,14 @@
-import { useEffect, useState, useCallback } from "react";
+import { Suspense, lazy, useEffect, useState, useCallback } from "react";
 import type { Prayer, PrayerLog, PrayerStatus, QadaLog } from "../../lib/salah";
 import { listPrayerLogs, listQadaLogs, logQada, setPrayerStatus } from "../../lib/salah";
 import { vibrate } from "../../lib/haptics";
 import { SalahToday } from "./SalahToday";
 import { SalahHistory } from "./SalahHistory";
 import { SalahQada } from "./SalahQada";
-import { SalahStats } from "./SalahStats";
 import { SalahReminder } from "./SalahReminder";
+
+// Pulls in recharts — lazy so its weight only loads when Stats is opened.
+const SalahStats = lazy(() => import("./SalahStats").then((m) => ({ default: m.SalahStats })));
 
 type Tab = "today" | "history" | "qada" | "stats" | "reminder";
 
@@ -89,7 +91,13 @@ export function SalahView() {
           {tab === "qada" && (
             <SalahQada logs={logs} qadaLogs={qadaLogs} onLogQada={handleLogQada} />
           )}
-          {tab === "stats" && <SalahStats logs={logs} qadaLogs={qadaLogs} />}
+          {tab === "stats" && (
+            <Suspense
+              fallback={<p className="px-3 py-10 text-center text-sm text-on-surface-dim">Loading…</p>}
+            >
+              <SalahStats logs={logs} qadaLogs={qadaLogs} />
+            </Suspense>
+          )}
           {tab === "reminder" && <SalahReminder />}
         </>
       )}

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import type { PrayerLog, QadaLog } from "../../lib/salah";
 import {
   PRAYERS,
@@ -9,9 +10,16 @@ import {
   firstLoggedDay,
   longestStreak,
   missedCounts,
-  qadaOwed
+  qadaOwed,
+  statusBreakdown
 } from "../../lib/salah";
 import { PRAYER_META } from "./meta";
+
+const STATUS_COLORS: Record<"on_time" | "late" | "missed", string> = {
+  on_time: "var(--color-primary)",
+  late: "var(--color-tertiary-container)",
+  missed: "rgba(255,255,255,0.15)"
+};
 
 interface Props {
   logs: PrayerLog[];
@@ -45,6 +53,25 @@ export function SalahStats({ logs, qadaLogs }: Props) {
   }, [map, range]);
 
   const pct = completion.total > 0 ? (completion.prayed / completion.total) * 100 : 0;
+
+  const breakdown = useMemo(() => {
+    const today = new Date();
+    if (range === "month") {
+      const from = new Date(today.getFullYear(), today.getMonth(), 1);
+      return statusBreakdown(logs, from, today);
+    }
+    const first = firstLoggedDay(map);
+    if (!first) return { on_time: 0, late: 0, missed: 0 };
+    return statusBreakdown(logs, first, today);
+  }, [logs, map, range]);
+
+  const pieData = (
+    [
+      { key: "on_time", name: "On time", value: breakdown.on_time },
+      { key: "late", name: "Late", value: breakdown.late },
+      { key: "missed", name: "Missed", value: breakdown.missed }
+    ] as const
+  ).filter((d) => d.value > 0);
 
   const missed = useMemo(() => {
     const to = new Date();
@@ -115,6 +142,54 @@ export function SalahStats({ logs, qadaLogs }: Props) {
         <p className="mt-2 text-[10px] font-bold tracking-widest text-on-surface-dim uppercase">
           {completion.prayed}/{completion.total} prayers
         </p>
+      </div>
+
+      {/* On time / late / missed breakdown */}
+      <div className="rounded-3xl border border-white/8 bg-surface-glass p-6 backdrop-blur-2xl">
+        <div className="mb-2">
+          <h3 className="text-lg font-bold text-on-surface">Prayer Breakdown</h3>
+          <p className="text-sm text-on-surface-dim">
+            {range === "month" ? "This month" : "All-time"} · on time vs. late vs. missed
+          </p>
+        </div>
+        {pieData.length === 0 ? (
+          <p className="py-8 text-center text-sm text-on-surface-dim">
+            Nothing logged for this range yet.
+          </p>
+        ) : (
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={55}
+                  outerRadius={80}
+                  paddingAngle={2}
+                  stroke="none"
+                >
+                  {pieData.map((d) => (
+                    <Cell key={d.key} fill={STATUS_COLORS[d.key]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    background: "var(--color-surface-high, #1d1d21)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: "0.75rem",
+                    fontSize: "12px"
+                  }}
+                />
+                <Legend
+                  verticalAlign="bottom"
+                  height={24}
+                  wrapperStyle={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.05em" }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
 
       {/* Missed breakdown */}

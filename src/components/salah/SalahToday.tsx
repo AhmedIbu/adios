@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { CorePrayer, Prayer, PrayerLog, PrayerStatus } from "../../lib/salah";
+import type { CorePrayer, Prayer, PrayerLog, PrayerStatus, SalahSettingsRow } from "../../lib/salah";
 import {
   PRAYERS,
   PRAYER_LABELS,
@@ -9,6 +9,7 @@ import {
   toDayString,
   weekComparison
 } from "../../lib/salah";
+import { computeDayTimes, deltaMinutes, formatDelta, hasLocation } from "../../lib/prayertimes";
 import { PRAYER_META } from "./meta";
 import { SalahBreathing } from "./SalahBreathing";
 
@@ -17,6 +18,7 @@ interface Props {
   onSetStatus: (day: string, prayer: Prayer, status: PrayerStatus, khushu?: number) => void;
   onClearStatus: (day: string, prayer: Prayer) => void;
   onSetSunnah: (day: string, prayer: Prayer, sunnah: boolean) => void;
+  settings: SalahSettingsRow | null;
 }
 
 const STATUSES: { id: PrayerStatus; label: string }[] = [
@@ -38,7 +40,7 @@ function statusClasses(status: PrayerStatus, active: boolean): string {
   }
 }
 
-export function SalahToday({ logs, onSetStatus, onClearStatus, onSetSunnah }: Props) {
+export function SalahToday({ logs, onSetStatus, onClearStatus, onSetSunnah, settings }: Props) {
   const todayStr = toDayString(new Date());
   const map = useMemo(() => buildLogMap(logs), [logs]);
   const dayEntry = map.get(todayStr);
@@ -52,6 +54,13 @@ export function SalahToday({ logs, onSetStatus, onClearStatus, onSetSunnah }: Pr
   );
   const [khushu, setKhushuVal] = useState(7);
   const [sunnah, setSunnahVal] = useState(false);
+
+  const todayTimes = useMemo(
+    () => (hasLocation(settings) ? computeDayTimes(settings, new Date()) : null),
+    [settings]
+  );
+  const sheetDelta =
+    sheet && todayTimes ? deltaMinutes(todayTimes[sheet.prayer], new Date()) : null;
 
   const pct = (prayed / PRAYERS.length) * 100;
   const circumference = 2 * Math.PI * 40;
@@ -304,6 +313,18 @@ export function SalahToday({ logs, onSetStatus, onClearStatus, onSetSunnah }: Pr
             <p className="px-5 pb-4 text-center text-xs text-on-surface-dim">
               Optional — rate your focus and note the sunnah.
             </p>
+            {sheetDelta != null && (
+              <p className="px-5 pb-4 text-center text-xs font-semibold text-primary">
+                {sheet && PRAYER_LABELS[sheet.prayer]} adhan was{" "}
+                {todayTimes &&
+                  sheet &&
+                  todayTimes[sheet.prayer].toLocaleTimeString("en-US", {
+                    hour: "numeric",
+                    minute: "2-digit"
+                  })}{" "}
+                — you're logging {formatDelta(sheetDelta)}
+              </p>
+            )}
             <div className="px-6">
               <div className="mb-1 flex items-center justify-between">
                 <span className="text-[11px] font-extrabold tracking-widest text-on-surface-dim uppercase">

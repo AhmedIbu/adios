@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import type { PrayerLog, QadaLog } from "../../lib/salah";
+import type { PrayerLog, QadaLog, SalahSettingsRow } from "../../lib/salah";
 import {
   PRAYERS,
   PRAYER_LABELS,
@@ -29,7 +29,9 @@ import {
   sunnahStats,
   weekComparison
 } from "../../lib/salah";
+import { accuracyByPrayer, formatDelta, hasLocation } from "../../lib/prayertimes";
 import { PRAYER_META } from "./meta";
+import { SalahPrayerTimeSettings } from "./SalahPrayerTimeSettings";
 
 const STATUS_COLORS: Record<"on_time" | "late" | "missed" | "made_up", string> = {
   on_time: "var(--color-primary)",
@@ -41,6 +43,8 @@ const STATUS_COLORS: Record<"on_time" | "late" | "missed" | "made_up", string> =
 interface Props {
   logs: PrayerLog[];
   qadaLogs: QadaLog[];
+  settings: SalahSettingsRow | null;
+  onSaveSettings: (settings: SalahSettingsRow) => Promise<void>;
 }
 
 const BAR_COLORS: Record<string, string> = {
@@ -51,8 +55,9 @@ const BAR_COLORS: Record<string, string> = {
   isha: "bg-primary-container"
 };
 
-export function SalahStats({ logs, qadaLogs }: Props) {
+export function SalahStats({ logs, qadaLogs, settings, onSaveSettings }: Props) {
   const [range, setRange] = useState<"month" | "all">("month");
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const map = useMemo(() => buildLogMap(logs), [logs]);
 
   const streak = useMemo(() => currentStreak(map, new Date()), [map]);
@@ -129,6 +134,12 @@ export function SalahStats({ logs, qadaLogs }: Props) {
 
   const weekCmp = useMemo(() => weekComparison(map, new Date()), [map]);
   const monthCmp = useMemo(() => monthComparison(map, new Date()), [map]);
+
+  const accuracy = useMemo(
+    () => accuracyByPrayer(logs, settings, rangeFrom, new Date()),
+    [logs, settings, rangeFrom]
+  );
+  const accuracyEntries = PRAYERS.filter((p) => accuracy[p] !== undefined);
 
   return (
     <section className="space-y-5">
@@ -292,6 +303,68 @@ export function SalahStats({ logs, qadaLogs }: Props) {
           </div>
         )}
       </div>
+
+      {/* Prayer-time accuracy */}
+      <div className="rounded-3xl border border-white/8 bg-surface-glass p-6 backdrop-blur-2xl">
+        <div className="mb-4 flex items-start justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-on-surface">Prayer-time accuracy</h3>
+            <p className="text-sm text-on-surface-dim">
+              Adhan time vs. when you logged it, computed on-device
+            </p>
+          </div>
+          <button
+            className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-white/5 text-on-surface-dim transition-colors hover:text-primary active:scale-90"
+            onClick={() => setSettingsOpen(true)}
+            aria-label={hasLocation(settings) ? "Edit prayer time settings" : "Set up prayer times"}
+          >
+            <span className="material-symbols-outlined">
+              {hasLocation(settings) ? "tune" : "add_location_alt"}
+            </span>
+          </button>
+        </div>
+        {!hasLocation(settings) ? (
+          <button
+            className="w-full rounded-2xl border border-dashed border-white/15 py-4 text-center text-sm font-semibold text-on-surface-dim transition-colors hover:border-primary/40 hover:text-primary"
+            onClick={() => setSettingsOpen(true)}
+          >
+            Set up your location to see this
+          </button>
+        ) : accuracyEntries.length === 0 ? (
+          <p className="py-4 text-center text-sm text-on-surface-dim">
+            Log a prayer as on time or late to start tracking this.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {accuracyEntries.map((p) => {
+              const d = accuracy[p] as number;
+              const meta = PRAYER_META[p];
+              return (
+                <div
+                  key={p}
+                  className="flex items-center justify-between rounded-xl border border-white/5 bg-white/5 p-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className={`material-symbols-outlined ${meta.color}`}>{meta.icon}</span>
+                    <span className="text-sm font-bold text-on-surface">{PRAYER_LABELS[p]}</span>
+                  </div>
+                  <span className="text-xs font-bold text-on-surface-dim">
+                    avg {formatDelta(d)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {settingsOpen && (
+        <SalahPrayerTimeSettings
+          settings={settings}
+          onSave={onSaveSettings}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
 
       {/* Khushu trend */}
       <div className="rounded-3xl border border-white/8 bg-surface-glass p-6 backdrop-blur-2xl">

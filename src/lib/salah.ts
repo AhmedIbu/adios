@@ -17,6 +17,15 @@ export interface PrayerLog {
   khushu: number | null;
   /** Whether the sunnah rakats were also prayed alongside the fard. */
   sunnah: boolean;
+  /** Moment this status was written — refreshed on every write, used for prayer-time accuracy. */
+  logged_at: string;
+}
+
+export interface SalahSettingsRow {
+  latitude: number | null;
+  longitude: number | null;
+  calc_method: string;
+  madhab: "shafi" | "hanafi";
 }
 
 export interface QadaLog {
@@ -39,7 +48,7 @@ export const PRAYER_LABELS: Record<Prayer, string> = {
 export async function listPrayerLogs(): Promise<PrayerLog[]> {
   const { data, error } = await supabase
     .from("prayer_logs")
-    .select("id, day, prayer, status, khushu, sunnah")
+    .select("id, day, prayer, status, khushu, sunnah, logged_at")
     .order("day", { ascending: true });
   if (error) throw error;
   return (data ?? []) as PrayerLog[];
@@ -51,15 +60,34 @@ export async function setPrayerStatus(
   status: PrayerStatus,
   khushu?: number
 ): Promise<PrayerLog> {
-  const row: Record<string, unknown> = { day, prayer, status };
+  const row: Record<string, unknown> = { day, prayer, status, logged_at: new Date().toISOString() };
   if (khushu !== undefined) row.khushu = khushu;
   const { data, error } = await supabase
     .from("prayer_logs")
     .upsert(row, { onConflict: "user_id,day,prayer" })
-    .select("id, day, prayer, status, khushu, sunnah")
+    .select("id, day, prayer, status, khushu, sunnah, logged_at")
     .single();
   if (error) throw error;
   return data as PrayerLog;
+}
+
+export async function getSalahSettings(): Promise<SalahSettingsRow | null> {
+  const { data, error } = await supabase
+    .from("salah_settings")
+    .select("latitude, longitude, calc_method, madhab")
+    .maybeSingle();
+  if (error) throw error;
+  return data as SalahSettingsRow | null;
+}
+
+export async function upsertSalahSettings(settings: SalahSettingsRow): Promise<SalahSettingsRow> {
+  const { data, error } = await supabase
+    .from("salah_settings")
+    .upsert({ ...settings, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
+    .select("latitude, longitude, calc_method, madhab")
+    .single();
+  if (error) throw error;
+  return data as SalahSettingsRow;
 }
 
 /** Un-logs a prayer entirely — used to untoggle the optional Tahajjud slot. */

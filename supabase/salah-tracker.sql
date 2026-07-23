@@ -80,3 +80,31 @@ end $$;
 alter table public.prayer_logs
   add constraint prayer_logs_prayer_check
   check (prayer in ('fajr', 'dhuhr', 'asr', 'maghrib', 'isha', 'tahajjud'));
+
+-- ---------------------------------------------------------------------------
+-- Phase C additions: prayer-time accuracy. logged_at captures the moment a
+-- prayer was marked prayed (refreshed on every write), compared against a
+-- locally-computed adhan time (adhan.js, no network/API) using stored
+-- coordinates + calculation settings.
+-- ---------------------------------------------------------------------------
+
+alter table public.prayer_logs
+  add column if not exists logged_at timestamptz not null default now();
+
+create table if not exists public.salah_settings (
+  user_id uuid primary key default auth.uid() references auth.users (id) on delete cascade,
+  latitude double precision,
+  longitude double precision,
+  calc_method text not null default 'MuslimWorldLeague',
+  madhab text not null default 'shafi' check (madhab in ('shafi', 'hanafi')),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.salah_settings enable row level security;
+
+create policy "own salah_settings: select" on public.salah_settings
+  for select using (auth.uid() = user_id);
+create policy "own salah_settings: insert" on public.salah_settings
+  for insert with check (auth.uid() = user_id);
+create policy "own salah_settings: update" on public.salah_settings
+  for update using (auth.uid() = user_id);

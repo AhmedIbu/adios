@@ -1,12 +1,14 @@
 import { Suspense, lazy, useEffect, useState, useCallback } from "react";
-import type { Prayer, PrayerLog, PrayerStatus, QadaLog } from "../../lib/salah";
+import type { Prayer, PrayerLog, PrayerStatus, QadaLog, SalahSettingsRow } from "../../lib/salah";
 import {
   clearPrayerStatus,
+  getSalahSettings,
   listPrayerLogs,
   listQadaLogs,
   logQada,
   setPrayerStatus,
-  setSunnah
+  setSunnah,
+  upsertSalahSettings
 } from "../../lib/salah";
 import { vibrate } from "../../lib/haptics";
 import { SalahToday } from "./SalahToday";
@@ -31,6 +33,7 @@ export function SalahView() {
   const [tab, setTab] = useState<Tab>("today");
   const [logs, setLogs] = useState<PrayerLog[]>([]);
   const [qadaLogs, setQadaLogs] = useState<QadaLog[]>([]);
+  const [settings, setSettings] = useState<SalahSettingsRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -48,6 +51,16 @@ export function SalahView() {
         );
       })
       .finally(() => setLoading(false));
+
+    // Optional table — degrade silently if Phase C's migration hasn't been run yet.
+    getSalahSettings()
+      .then(setSettings)
+      .catch((e) => console.error(e));
+  }, []);
+
+  const handleSaveSettings = useCallback(async (next: SalahSettingsRow) => {
+    const saved = await upsertSalahSettings(next);
+    setSettings(saved);
   }, []);
 
   const handleSetStatus = useCallback(
@@ -56,7 +69,18 @@ export function SalahView() {
       const tempId = `temp-${day}-${prayer}`;
       setLogs((ls) => {
         const rest = ls.filter((l) => !(l.day === day && l.prayer === prayer));
-        return [...rest, { id: tempId, day, prayer, status, khushu: khushu ?? null, sunnah: false }];
+        return [
+          ...rest,
+          {
+            id: tempId,
+            day,
+            prayer,
+            status,
+            khushu: khushu ?? null,
+            sunnah: false,
+            logged_at: new Date().toISOString()
+          }
+        ];
       });
       try {
         const saved = await setPrayerStatus(day, prayer, status, khushu);
@@ -123,6 +147,7 @@ export function SalahView() {
               onSetStatus={handleSetStatus}
               onClearStatus={handleClearStatus}
               onSetSunnah={handleSetSunnah}
+              settings={settings}
             />
           )}
           {tab === "history" && (
@@ -135,7 +160,12 @@ export function SalahView() {
             <Suspense
               fallback={<p className="px-3 py-10 text-center text-sm text-on-surface-dim">Loading…</p>}
             >
-              <SalahStats logs={logs} qadaLogs={qadaLogs} />
+              <SalahStats
+                logs={logs}
+                qadaLogs={qadaLogs}
+                settings={settings}
+                onSaveSettings={handleSaveSettings}
+              />
             </Suspense>
           )}
           {tab === "reminder" && <SalahReminder />}

@@ -177,3 +177,19 @@ export const REFLECTION_PROMPTS: string[] = [
 export function dailyPrompt(dayString: string): string {
   return REFLECTION_PROMPTS[(hashDay(dayString) + 7) % REFLECTION_PROMPTS.length];
 }
+
+const HADITHS = REMINDERS.filter((r) => r.category === "hadith");
+const QUOTES = REMINDERS.filter((r) => r.category === "quote");
+
+/** Same hadith for the whole calendar day, from the hadith-only subset. */
+export function dailyHadith(dayString: string): Reminder {
+  return HADITHS[(hashDay(dayString) + 13) % HADITHS.length];
+}
+
+export function allHadiths(): Reminder[] {
+  return HADITHS;
+}
+
+export function allQuotes(): Reminder[] {
+  return QUOTES;
+}

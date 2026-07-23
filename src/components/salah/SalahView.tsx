@@ -26,19 +26,21 @@ import { vibrate } from "../../lib/haptics";
 import { SalahToday } from "./SalahToday";
 import { SalahHistory } from "./SalahHistory";
 import { SalahQada } from "./SalahQada";
-import { SalahReminder } from "./SalahReminder";
 
-// Pulls in recharts — lazy so its weight only loads when Stats is opened.
+// Heavier/less-visited tabs — lazy so their weight only loads when opened.
 const SalahStats = lazy(() => import("./SalahStats").then((m) => ({ default: m.SalahStats })));
+const SalahLearn = lazy(() => import("./SalahLearn").then((m) => ({ default: m.SalahLearn })));
+const SalahMore = lazy(() => import("./SalahMore").then((m) => ({ default: m.SalahMore })));
 
-type Tab = "today" | "history" | "qada" | "stats" | "reminder";
+type Tab = "today" | "history" | "qada" | "stats" | "learn" | "more";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "today", label: "Today", icon: "today" },
   { id: "history", label: "History", icon: "history" },
   { id: "qada", label: "Qada", icon: "event_busy" },
   { id: "stats", label: "Stats", icon: "insights" },
-  { id: "reminder", label: "Reminder", icon: "auto_stories" }
+  { id: "learn", label: "Learn", icon: "auto_stories" },
+  { id: "more", label: "More", icon: "apps" }
 ];
 
 export function SalahView() {
@@ -221,14 +223,25 @@ export function SalahView() {
               />
             </Suspense>
           )}
-          {tab === "reminder" && (
-            <SalahReminder
-              reflections={reflections}
-              onSaveReflection={handleSaveReflection}
-              duas={duas}
-              onAddDua={handleAddDua}
-              onMarkDuaAnswered={handleMarkDuaAnswered}
-            />
+          {tab === "learn" && (
+            <Suspense
+              fallback={<p className="px-3 py-10 text-center text-sm text-on-surface-dim">Loading…</p>}
+            >
+              <SalahLearn
+                reflections={reflections}
+                onSaveReflection={handleSaveReflection}
+                duas={duas}
+                onAddDua={handleAddDua}
+                onMarkDuaAnswered={handleMarkDuaAnswered}
+              />
+            </Suspense>
+          )}
+          {tab === "more" && (
+            <Suspense
+              fallback={<p className="px-3 py-10 text-center text-sm text-on-surface-dim">Loading…</p>}
+            >
+              <SalahMore />
+            </Suspense>
           )}
         </>
       )}

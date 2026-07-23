@@ -2,6 +2,10 @@ import { useState } from "react";
 import type { SalahSettingsRow } from "../../lib/salah";
 import { CALC_METHODS, CALC_METHOD_LABELS } from "../../lib/prayertimes";
 
+// Default for this single-user app — Bangalore, India. Swap via "Use my
+// current location" or by editing here if that ever changes.
+const DEFAULT_LOCATION = { latitude: 12.9716, longitude: 77.5946, label: "Bangalore, India" };
+
 interface Props {
   settings: SalahSettingsRow | null;
   onSave: (settings: SalahSettingsRow) => Promise<void>;
@@ -9,8 +13,12 @@ interface Props {
 }
 
 export function SalahPrayerTimeSettings({ settings, onSave, onClose }: Props) {
-  const [latitude, setLatitude] = useState<number | null>(settings?.latitude ?? null);
-  const [longitude, setLongitude] = useState<number | null>(settings?.longitude ?? null);
+  const [latitude, setLatitude] = useState<number | null>(
+    settings?.latitude ?? DEFAULT_LOCATION.latitude
+  );
+  const [longitude, setLongitude] = useState<number | null>(
+    settings?.longitude ?? DEFAULT_LOCATION.longitude
+  );
   const [calcMethod, setCalcMethod] = useState(settings?.calc_method ?? "MuslimWorldLeague");
   const [madhab, setMadhab] = useState<"shafi" | "hanafi">(settings?.madhab ?? "shafi");
   const [locating, setLocating] = useState(false);
@@ -74,7 +82,7 @@ export function SalahPrayerTimeSettings({ settings, onSave, onClose }: Props) {
         </p>
 
         <div className="space-y-5 px-6">
-          <div>
+          <div className="space-y-2">
             <button
               className="flex w-full items-center justify-between rounded-2xl border border-white/8 bg-white/5 px-4 py-3 text-left transition-colors hover:bg-white/10 disabled:opacity-60"
               onClick={useMyLocation}
@@ -84,6 +92,19 @@ export function SalahPrayerTimeSettings({ settings, onSave, onClose }: Props) {
                 {locating ? "Getting your location…" : "Use my current location"}
               </span>
               <span className="material-symbols-outlined text-primary">my_location</span>
+            </button>
+            <button
+              className="flex w-full items-center justify-between rounded-2xl border border-white/8 bg-white/5 px-4 py-3 text-left transition-colors hover:bg-white/10"
+              onClick={() => {
+                setLatitude(DEFAULT_LOCATION.latitude);
+                setLongitude(DEFAULT_LOCATION.longitude);
+                setLocError(null);
+              }}
+            >
+              <span className="text-sm font-semibold text-on-surface">
+                Use {DEFAULT_LOCATION.label}
+              </span>
+              <span className="material-symbols-outlined text-primary">location_city</span>
             </button>
             <p className="mt-2 text-xs text-on-surface-dim">
               {latitude != null && longitude != null

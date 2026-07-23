@@ -289,6 +289,74 @@ export function qadaBacklog(logs: PrayerLog[], qadaLogs: QadaLog[]): QadaBacklog
   return backlog.sort((a, b) => a.day.localeCompare(b.day));
 }
 
+function weekStart(d: Date): Date {
+  const offset = (d.getDay() + 6) % 7; // Monday-first
+  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate() - offset);
+  return start;
+}
+
+export interface PeriodComparison {
+  currentPct: number;
+  bestPct: number;
+  isNewBest: boolean;
+}
+
+/** This calendar month's completion % vs. the best completion % of any prior full month. */
+export function monthComparison(map: LogMap, today: Date): PeriodComparison | null {
+  const first = firstLoggedDay(map);
+  if (!first) return null;
+
+  const curFrom = new Date(today.getFullYear(), today.getMonth(), 1);
+  const cur = completionStats(map, curFrom, today);
+  const currentPct = cur.total > 0 ? (cur.prayed / cur.total) * 100 : 0;
+
+  let bestPct = 0;
+  let cursor = new Date(first.getFullYear(), first.getMonth(), 1);
+  while (cursor < curFrom) {
+    const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+    const stats = completionStats(map, cursor, monthEnd);
+    if (stats.total > 0) bestPct = Math.max(bestPct, (stats.prayed / stats.total) * 100);
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+  }
+
+  if (bestPct === 0 && currentPct === 0) return null;
+  return { currentPct, bestPct, isNewBest: bestPct > 0 && currentPct > bestPct };
+}
+
+/** This calendar week's completion % (so far) vs. the best completion % of any prior full week. */
+export function weekComparison(map: LogMap, today: Date): PeriodComparison | null {
+  const first = firstLoggedDay(map);
+  if (!first) return null;
+
+  const curFrom = weekStart(today);
+  const cur = completionStats(map, curFrom, today);
+  const currentPct = cur.total > 0 ? (cur.prayed / cur.total) * 100 : 0;
+
+  let bestPct = 0;
+  let cursor = weekStart(first);
+  while (cursor < curFrom) {
+    const weekEnd = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 6);
+    const stats = completionStats(map, cursor, weekEnd);
+    if (stats.total > 0) bestPct = Math.max(bestPct, (stats.prayed / stats.total) * 100);
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 7);
+  }
+
+  if (bestPct === 0 && currentPct === 0) return null;
+  return { currentPct, bestPct, isNewBest: bestPct > 0 && currentPct > bestPct };
+}
+
+/** All 5 core prayers on time, with an average khushu rating of 8+ for the day. */
+export function isPerfectDay(logs: PrayerLog[], day: string): boolean {
+  const dayLogs = logs.filter((l) => l.day === day);
+  const allOnTime = PRAYERS.every(
+    (p) => dayLogs.find((l) => l.prayer === p)?.status === "on_time"
+  );
+  if (!allOnTime) return false;
+  const rated = dayLogs.filter((l) => l.khushu != null).map((l) => l.khushu as number);
+  if (rated.length === 0) return false;
+  return rated.reduce((a, b) => a + b, 0) / rated.length >= 8;
+}
+
 /** Consecutive days ending today (or yesterday) with a logged Tahajjud. */
 export function tahajjudStreak(logs: PrayerLog[], today: Date): number {
   const days = new Set(logs.filter((l) => l.prayer === "tahajjud").map((l) => l.day));

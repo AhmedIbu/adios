@@ -1,6 +1,13 @@
 import { useMemo, useState } from "react";
 import type { Prayer, PrayerLog, PrayerStatus } from "../../lib/salah";
-import { PRAYERS, PRAYER_LABELS, buildLogMap, prayedCount, toDayString } from "../../lib/salah";
+import {
+  PRAYERS,
+  PRAYER_LABELS,
+  buildLogMap,
+  isPerfectDay,
+  prayedCount,
+  toDayString
+} from "../../lib/salah";
 import { PRAYER_META } from "./meta";
 
 interface Props {
@@ -121,17 +128,25 @@ export function SalahHistory({ logs, onSetStatus }: Props) {
             const isFuture = dayStr > todayStr;
             const count = prayedCount(map.get(dayStr));
             const selected = selectedDay === dayStr;
+            const perfect = !isFuture && isPerfectDay(logs, dayStr);
             return (
               <button
                 key={dayStr}
-                className={`flex aspect-square items-center justify-center rounded-lg border text-[11px] font-bold transition-all duration-200 active:scale-90 ${
+                className={`relative flex aspect-square items-center justify-center rounded-lg border text-[11px] font-bold transition-all duration-200 active:scale-90 ${
                   isFuture ? "border-transparent text-on-surface-dim/20" : INTENSITY[count]
-                } ${selected ? "ring-2 ring-primary" : ""}`}
+                } ${selected ? "ring-2 ring-primary" : ""} ${
+                  perfect ? "ring-2 ring-tertiary ring-offset-1 ring-offset-surface" : ""
+                }`}
                 onClick={() => !isFuture && setSelectedDay(selected ? null : dayStr)}
                 disabled={isFuture}
-                aria-label={`${dayStr}: ${count} of 5 prayed`}
+                aria-label={`${dayStr}: ${count} of 5 prayed${perfect ? ", perfect day" : ""}`}
               >
                 {day}
+                {perfect && (
+                  <span className="material-symbols-outlined is-filled absolute -top-1.5 -right-1.5 text-[13px] text-tertiary">
+                    star
+                  </span>
+                )}
               </button>
             );
           })}

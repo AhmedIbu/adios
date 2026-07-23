@@ -23,9 +23,11 @@ import {
   khushuTrendSeries,
   longestStreak,
   missedCounts,
+  monthComparison,
   qadaOwed,
   statusBreakdownWithQada,
-  sunnahStats
+  sunnahStats,
+  weekComparison
 } from "../../lib/salah";
 import { PRAYER_META } from "./meta";
 
@@ -125,6 +127,9 @@ export function SalahStats({ logs, qadaLogs }: Props) {
   const sunnah = useMemo(() => sunnahStats(logs, rangeFrom, new Date()), [logs, rangeFrom]);
   const sunnahPct = sunnah.totalPrayed > 0 ? (sunnah.prayedWithSunnah / sunnah.totalPrayed) * 100 : 0;
 
+  const weekCmp = useMemo(() => weekComparison(map, new Date()), [map]);
+  const monthCmp = useMemo(() => monthComparison(map, new Date()), [map]);
+
   return (
     <section className="space-y-5">
       {/* Streak card */}
@@ -147,6 +152,61 @@ export function SalahStats({ logs, qadaLogs }: Props) {
           </p>
         </div>
       </div>
+
+      {/* Personal best — you vs. your own past record, not other users */}
+      {(weekCmp || monthCmp) && (
+        <div className="rounded-3xl border border-white/8 bg-surface-glass p-6 backdrop-blur-2xl">
+          <h3 className="mb-4 text-lg font-bold text-on-surface">Personal best</h3>
+          <div className="space-y-3">
+            {weekCmp && (
+              <div className="flex items-center justify-between rounded-2xl border border-white/8 bg-white/5 p-4">
+                <div>
+                  <p className="text-[11px] font-extrabold tracking-widest text-on-surface-dim uppercase">
+                    This week
+                  </p>
+                  <p className="mt-1 text-2xl font-extrabold text-on-surface">
+                    {weekCmp.currentPct.toFixed(0)}%
+                  </p>
+                  <p className="text-xs text-on-surface-dim">
+                    Best week: {weekCmp.bestPct.toFixed(0)}%
+                  </p>
+                </div>
+                {weekCmp.isNewBest && (
+                  <span className="flex items-center gap-1 rounded-full bg-tertiary-container px-3 py-1.5 text-[10px] font-extrabold tracking-widest text-on-tertiary-container uppercase">
+                    <span className="material-symbols-outlined is-filled text-sm">
+                      emoji_events
+                    </span>
+                    New best
+                  </span>
+                )}
+              </div>
+            )}
+            {monthCmp && (
+              <div className="flex items-center justify-between rounded-2xl border border-white/8 bg-white/5 p-4">
+                <div>
+                  <p className="text-[11px] font-extrabold tracking-widest text-on-surface-dim uppercase">
+                    This month
+                  </p>
+                  <p className="mt-1 text-2xl font-extrabold text-on-surface">
+                    {monthCmp.currentPct.toFixed(0)}%
+                  </p>
+                  <p className="text-xs text-on-surface-dim">
+                    Best month: {monthCmp.bestPct.toFixed(0)}%
+                  </p>
+                </div>
+                {monthCmp.isNewBest && (
+                  <span className="flex items-center gap-1 rounded-full bg-tertiary-container px-3 py-1.5 text-[10px] font-extrabold tracking-widest text-on-tertiary-container uppercase">
+                    <span className="material-symbols-outlined is-filled text-sm">
+                      emoji_events
+                    </span>
+                    New best
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Completion card */}
       <div className="rounded-3xl border border-white/8 bg-surface-glass p-6 backdrop-blur-2xl">

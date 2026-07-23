@@ -6,9 +6,11 @@ import {
   buildLogMap,
   currentStreak,
   prayedCount,
-  toDayString
+  toDayString,
+  weekComparison
 } from "../../lib/salah";
 import { PRAYER_META } from "./meta";
+import { SalahBreathing } from "./SalahBreathing";
 
 interface Props {
   logs: PrayerLog[];
@@ -42,7 +44,9 @@ export function SalahToday({ logs, onSetStatus, onClearStatus, onSetSunnah }: Pr
   const dayEntry = map.get(todayStr);
   const prayed = prayedCount(dayEntry);
   const streak = useMemo(() => currentStreak(map, new Date()), [map]);
+  const weekCmp = useMemo(() => weekComparison(map, new Date()), [map]);
   const [leaving, setLeaving] = useState<Set<Prayer>>(new Set());
+  const [breathingOpen, setBreathingOpen] = useState(false);
   const [sheet, setSheet] = useState<{ prayer: CorePrayer; status: "on_time" | "late" } | null>(
     null
   );
@@ -96,16 +100,28 @@ export function SalahToday({ logs, onSetStatus, onClearStatus, onSetSunnah }: Pr
   return (
     <section>
       {/* Streak */}
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-xl font-bold tracking-tight text-on-surface">Today</h2>
-        {streak > 0 && (
-          <div className="flex items-center gap-1.5 rounded-full border border-secondary-container/40 bg-secondary-container/30 px-3.5 py-1.5">
-            <span aria-hidden="true">🔥</span>
-            <span className="text-[11px] font-extrabold tracking-widest text-secondary uppercase">
-              {streak} day streak
-            </span>
-          </div>
-        )}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {weekCmp?.isNewBest && (
+            <div className="flex items-center gap-1.5 rounded-full border border-tertiary-container/40 bg-tertiary-container/30 px-3.5 py-1.5">
+              <span className="material-symbols-outlined is-filled text-sm text-tertiary">
+                emoji_events
+              </span>
+              <span className="text-[11px] font-extrabold tracking-widest text-tertiary uppercase">
+                New best week
+              </span>
+            </div>
+          )}
+          {streak > 0 && (
+            <div className="flex items-center gap-1.5 rounded-full border border-secondary-container/40 bg-secondary-container/30 px-3.5 py-1.5">
+              <span aria-hidden="true">🔥</span>
+              <span className="text-[11px] font-extrabold tracking-widest text-secondary uppercase">
+                {streak} day streak
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Progress card */}
@@ -250,6 +266,23 @@ export function SalahToday({ logs, onSetStatus, onClearStatus, onSetSunnah }: Pr
           {tahajjudDone ? "check_circle" : "radio_button_unchecked"}
         </span>
       </button>
+
+      {/* Breathing exercise — a moment to settle before prayer. */}
+      <button
+        className="mt-3 flex w-full items-center gap-3.5 rounded-2xl border border-white/8 bg-surface-glass p-4 text-left transition-colors duration-200 hover:bg-white/5"
+        onClick={() => setBreathingOpen(true)}
+      >
+        <div className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-primary/10 text-primary">
+          <span className="material-symbols-outlined is-filled">self_improvement</span>
+        </div>
+        <div className="flex-1">
+          <h4 className="text-base font-bold text-on-surface">Breathing exercise</h4>
+          <p className="text-xs text-on-surface-dim">A moment to settle before you pray</p>
+        </div>
+        <span className="material-symbols-outlined text-on-surface-dim/40">chevron_right</span>
+      </button>
+
+      {breathingOpen && <SalahBreathing onClose={() => setBreathingOpen(false)} />}
 
       {/* Khushu / sunnah quick sheet, shown after marking a prayer on time/late. */}
       {sheet && (

@@ -1,6 +1,7 @@
 import { SalahHijriCalendar } from "./SalahHijriCalendar";
 import { SalahIslamicEvents } from "./SalahIslamicEvents";
 import { SalahZakahCalculator } from "./SalahZakahCalculator";
+import { SalahSins } from "./SalahSins";
 
 export function SalahMore() {
   return (
@@ -8,6 +9,7 @@ export function SalahMore() {
       <SalahHijriCalendar />
       <SalahIslamicEvents />
       <SalahZakahCalculator />
+      <SalahSins />
     </section>
   );
 }

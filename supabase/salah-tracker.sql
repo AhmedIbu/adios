@@ -184,3 +184,47 @@ create policy "own salah-audio: upload" on storage.objects
   for insert with check (bucket_id = 'salah-audio' and auth.uid()::text = (storage.foldername(name))[1]);
 create policy "own salah-audio: delete" on storage.objects
   for delete using (bucket_id = 'salah-audio' and auth.uid()::text = (storage.foldername(name))[1]);
+
+-- ---------------------------------------------------------------------------
+-- Sins tracker: a private accountability log, separate from the original
+-- 21-feature list. sin_types is a user-editable list (severity 1-5, mild to
+-- major, mapped to a color ramp in the app); sin_logs is an append-only log
+-- (no update policy — entries are logged and can be deleted, not edited).
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.sin_types (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  name text not null,
+  severity smallint not null default 3 check (severity between 1 and 5),
+  sort_order numeric not null default 0,
+  created_at timestamptz not null default now()
+);
+
+alter table public.sin_types enable row level security;
+
+create policy "own sin_types: select" on public.sin_types
+  for select using (auth.uid() = user_id);
+create policy "own sin_types: insert" on public.sin_types
+  for insert with check (auth.uid() = user_id);
+create policy "own sin_types: update" on public.sin_types
+  for update using (auth.uid() = user_id);
+create policy "own sin_types: delete" on public.sin_types
+  for delete using (auth.uid() = user_id);
+
+create table if not exists public.sin_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  sin_type_id uuid not null references public.sin_types (id) on delete cascade,
+  occurred_at timestamptz not null default now(),
+  note text
+);
+
+alter table public.sin_logs enable row level security;
+
+create policy "own sin_logs: select" on public.sin_logs
+  for select using (auth.uid() = user_id);
+create policy "own sin_logs: insert" on public.sin_logs
+  for insert with check (auth.uid() = user_id);
+create policy "own sin_logs: delete" on public.sin_logs
+  for delete using (auth.uid() = user_id);

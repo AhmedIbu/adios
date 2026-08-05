@@ -291,8 +291,6 @@ end $$;
 -- time is a qada (make-up) prayer, not merely "late". Safe to re-run.
 -- ---------------------------------------------------------------------------
 
-update public.prayer_logs set status = 'qada' where status = 'late';
-
 do $$
 declare
   con record;
@@ -301,11 +299,13 @@ begin
     select conname
     from pg_constraint
     where conrelid = 'public.prayer_logs'::regclass
-      and pg_get_constraintdef(oid) like '%status = ANY%'
+      and pg_get_constraintdef(oid) like '%status%'
   loop
     execute format('alter table public.prayer_logs drop constraint %I', con.conname);
   end loop;
 end $$;
+
+update public.prayer_logs set status = 'qada' where status = 'late';
 
 alter table public.prayer_logs
   add constraint prayer_logs_status_check

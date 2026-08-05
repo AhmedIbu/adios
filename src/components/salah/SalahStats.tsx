@@ -1,26 +1,13 @@
 import { useMemo, useState } from "react";
-import {
-  Cell,
-  Legend,
-  Line,
-  LineChart,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis
-} from "recharts";
+import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import type { PrayerLog, QadaLog, SalahSettingsRow } from "../../lib/salah";
 import {
   PRAYERS,
   PRAYER_LABELS,
-  averageKhushu,
   buildLogMap,
   completionStats,
   currentStreak,
   firstLoggedDay,
-  khushuTrendSeries,
   longestStreak,
   missedCounts,
   monthComparison,
@@ -112,22 +99,6 @@ export function SalahStats({ logs, qadaLogs, settings, onSaveSettings }: Props) 
     if (range === "month") return new Date(today.getFullYear(), today.getMonth(), 1);
     return firstLoggedDay(map) ?? today;
   }, [map, range]);
-
-  const khushuAvg = useMemo(
-    () => averageKhushu(logs, rangeFrom, new Date()),
-    [logs, rangeFrom]
-  );
-  const khushuSeries = useMemo(
-    () =>
-      khushuTrendSeries(logs, rangeFrom, new Date()).map((d) => ({
-        ...d,
-        label: new Date(d.day + "T00:00:00").toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric"
-        })
-      })),
-    [logs, rangeFrom]
-  );
 
   const sunnah = useMemo(() => sunnahStats(logs, rangeFrom, new Date()), [logs, rangeFrom]);
   const sunnahPct = sunnah.totalPrayed > 0 ? (sunnah.prayedWithSunnah / sunnah.totalPrayed) * 100 : 0;
@@ -365,53 +336,6 @@ export function SalahStats({ logs, qadaLogs, settings, onSaveSettings }: Props) 
           onClose={() => setSettingsOpen(false)}
         />
       )}
-
-      {/* Khushu trend */}
-      <div className="rounded-3xl border border-white/8 bg-surface-glass p-6 backdrop-blur-2xl">
-        <div className="mb-2">
-          <h3 className="text-lg font-bold text-on-surface">Focus (khushu)</h3>
-          <p className="text-sm text-on-surface-dim">
-            {khushuAvg != null
-              ? `${khushuAvg.toFixed(1)}/10 average · ${range === "month" ? "this month" : "all-time"}`
-              : "Rate your focus after a prayer to start tracking this."}
-          </p>
-        </div>
-        {khushuSeries.length < 2 ? (
-          <p className="py-6 text-center text-sm text-on-surface-dim">
-            Not enough rated days yet for a trend.
-          </p>
-        ) : (
-          <div className="h-40">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={khushuSeries} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
-                <XAxis
-                  dataKey="label"
-                  tick={{ fontSize: 10, fill: "var(--color-on-surface-dim)" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis domain={[1, 10]} hide />
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--color-surface-high, #1d1d21)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    borderRadius: "0.75rem",
-                    fontSize: "12px"
-                  }}
-                  formatter={(v) => [`${Number(v).toFixed(1)}/10`, "Focus"]}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="avg"
-                  stroke="var(--color-primary)"
-                  strokeWidth={2}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </div>
 
       {/* Sunnah alongside fard */}
       {sunnah.totalPrayed > 0 && (

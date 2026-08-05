@@ -115,7 +115,7 @@ export function SalahView() {
   }, []);
 
   const handleSetStatus = useCallback(
-    async (day: string, prayer: Prayer, status: PrayerStatus, khushu?: number) => {
+    async (day: string, prayer: Prayer, status: PrayerStatus) => {
       // Optimistic: swap in a temp row immediately, reconcile with the real one.
       const tempId = `temp-${day}-${prayer}`;
       setLogs((ls) => {
@@ -127,14 +127,13 @@ export function SalahView() {
             day,
             prayer,
             status,
-            khushu: khushu ?? null,
             sunnah: false,
             logged_at: new Date().toISOString()
           }
         ];
       });
       try {
-        const saved = await setPrayerStatus(day, prayer, status, khushu);
+        const saved = await setPrayerStatus(day, prayer, status);
         setLogs((ls) => ls.map((l) => (l.id === tempId ? saved : l)));
       } catch (e) {
         console.error(e);

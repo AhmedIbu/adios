@@ -17,7 +17,7 @@ import { SalahIntentionRecorder } from "./SalahIntentionRecorder";
 
 interface Props {
   logs: PrayerLog[];
-  onSetStatus: (day: string, prayer: Prayer, status: PrayerStatus, khushu?: number) => void;
+  onSetStatus: (day: string, prayer: Prayer, status: PrayerStatus) => void;
   onClearStatus: (day: string, prayer: Prayer) => void;
   onSetSunnah: (day: string, prayer: Prayer, sunnah: boolean) => void;
   settings: SalahSettingsRow | null;
@@ -111,7 +111,6 @@ export function SalahToday({
   const [sheet, setSheet] = useState<{ prayer: CorePrayer; status: "on_time" | "late" } | null>(
     null
   );
-  const [khushu, setKhushuVal] = useState(7);
   const [sunnah, setSunnahVal] = useState(false);
   const [intentionValue, setIntentionValue] = useState<{ text: string; audioBlob: Blob | null }>({
     text: "",
@@ -150,20 +149,19 @@ export function SalahToday({
       easeOut(p);
       return;
     }
-    // Prayed (on time/late) — pause on a quick sheet to rate khushu / note sunnah.
-    setKhushuVal(7);
+    // Prayed (on time/late) — pause on a quick sheet to note sunnah / an intention.
     setSunnahVal(false);
     setIntentionValue({ text: "", audioBlob: null });
     setSheet({ prayer: p, status });
   }
 
-  function confirmSheet(rate: boolean) {
+  function confirmSheet(applyExtras: boolean) {
     if (!sheet) return;
-    onSetStatus(todayStr, sheet.prayer, sheet.status, rate ? khushu : undefined);
-    if (rate && sunnah) onSetSunnah(todayStr, sheet.prayer, true);
-    if (intentionValue.text.trim()) {
+    onSetStatus(todayStr, sheet.prayer, sheet.status);
+    if (applyExtras && sunnah) onSetSunnah(todayStr, sheet.prayer, true);
+    if (applyExtras && intentionValue.text.trim()) {
       onSaveIntentionText(todayStr, sheet.prayer, intentionValue.text.trim());
-    } else if (intentionValue.audioBlob) {
+    } else if (applyExtras && intentionValue.audioBlob) {
       onSaveIntentionAudio(todayStr, sheet.prayer, intentionValue.audioBlob);
     }
     easeOut(sheet.prayer);
@@ -379,7 +377,7 @@ export function SalahToday({
         </div>
       )}
 
-      {/* Khushu / sunnah quick sheet, shown after marking a prayer on time/late. */}
+      {/* Sunnah / intention quick sheet, shown after marking a prayer on time/late. */}
       {sheet && (
         <div
           className="fixed inset-0 z-[80] flex items-end bg-black/50 backdrop-blur-sm"
@@ -397,7 +395,7 @@ export function SalahToday({
               How was your {PRAYER_LABELS[sheet.prayer]}?
             </h3>
             <p className="px-5 pb-4 text-center text-xs text-on-surface-dim">
-              Optional — rate your focus and note the sunnah.
+              Optional — note the sunnah or an intention.
             </p>
             {sheetDelta != null && (
               <p className="px-5 pb-4 text-center text-xs font-semibold text-primary">
@@ -412,23 +410,8 @@ export function SalahToday({
               </p>
             )}
             <div className="px-6">
-              <div className="mb-1 flex items-center justify-between">
-                <span className="text-[11px] font-extrabold tracking-widest text-on-surface-dim uppercase">
-                  Focus
-                </span>
-                <span className="text-sm font-bold text-primary">{khushu}/10</span>
-              </div>
-              <input
-                type="range"
-                min={1}
-                max={10}
-                value={khushu}
-                onChange={(e) => setKhushuVal(Number(e.target.value))}
-                className="w-full accent-primary"
-              />
-
               <button
-                className="mt-5 flex w-full items-center justify-between rounded-2xl border border-white/8 bg-white/5 px-4 py-3"
+                className="flex w-full items-center justify-between rounded-2xl border border-white/8 bg-white/5 px-4 py-3"
                 onClick={() => setSunnahVal((v) => !v)}
               >
                 <span className="text-sm font-semibold text-on-surface">

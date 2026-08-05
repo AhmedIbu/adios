@@ -13,8 +13,6 @@ export interface PrayerLog {
   day: string; // YYYY-MM-DD
   prayer: Prayer;
   status: PrayerStatus;
-  /** Self-rated focus, 1–10. Null until the user rates it (rating is optional). */
-  khushu: number | null;
   /** Whether the sunnah rakats were also prayed alongside the fard. */
   sunnah: boolean;
   /** Moment this status was written — refreshed on every write, used for prayer-time accuracy. */
@@ -48,7 +46,7 @@ export const PRAYER_LABELS: Record<Prayer, string> = {
 export async function listPrayerLogs(): Promise<PrayerLog[]> {
   const { data, error } = await supabase
     .from("prayer_logs")
-    .select("id, day, prayer, status, khushu, sunnah, logged_at")
+    .select("id, day, prayer, status, sunnah, logged_at")
     .order("day", { ascending: true });
   if (error) throw error;
   return (data ?? []) as PrayerLog[];
@@ -57,15 +55,13 @@ export async function listPrayerLogs(): Promise<PrayerLog[]> {
 export async function setPrayerStatus(
   day: string,
   prayer: Prayer,
-  status: PrayerStatus,
-  khushu?: number
+  status: PrayerStatus
 ): Promise<PrayerLog> {
-  const row: Record<string, unknown> = { day, prayer, status, logged_at: new Date().toISOString() };
-  if (khushu !== undefined) row.khushu = khushu;
+  const row = { day, prayer, status, logged_at: new Date().toISOString() };
   const { data, error } = await supabase
     .from("prayer_logs")
     .upsert(row, { onConflict: "user_id,day,prayer" })
-    .select("id, day, prayer, status, khushu, sunnah, logged_at")
+    .select("id, day, prayer, status, sunnah, logged_at")
     .single();
   if (error) throw error;
   return data as PrayerLog;
@@ -373,16 +369,10 @@ export function weekComparison(map: LogMap, today: Date): PeriodComparison | nul
   return { currentPct, bestPct, isNewBest: bestPct > 0 && currentPct > bestPct };
 }
 
-/** All 5 core prayers on time, with an average khushu rating of 8+ for the day. */
+/** All 5 core prayers on time for the day. */
 export function isPerfectDay(logs: PrayerLog[], day: string): boolean {
   const dayLogs = logs.filter((l) => l.day === day);
-  const allOnTime = PRAYERS.every(
-    (p) => dayLogs.find((l) => l.prayer === p)?.status === "on_time"
-  );
-  if (!allOnTime) return false;
-  const rated = dayLogs.filter((l) => l.khushu != null).map((l) => l.khushu as number);
-  if (rated.length === 0) return false;
-  return rated.reduce((a, b) => a + b, 0) / rated.length >= 8;
+  return PRAYERS.every((p) => dayLogs.find((l) => l.prayer === p)?.status === "on_time");
 }
 
 /** Consecutive days ending today (or yesterday) with a logged Tahajjud. */
@@ -396,38 +386,6 @@ export function tahajjudStreak(logs: PrayerLog[], today: Date): number {
     cursor.setDate(cursor.getDate() - 1);
   }
   return streak;
-}
-
-/** Average self-rated khushu across all core-prayer logs in the period, or null if none rated. */
-export function averageKhushu(logs: PrayerLog[], from: Date, to: Date): number | null {
-  const fromStr = toDayString(from);
-  const toStr = toDayString(to);
-  const vals = logs
-    .filter((l) => l.day >= fromStr && l.day <= toStr && l.khushu != null)
-    .map((l) => l.khushu as number);
-  if (vals.length === 0) return null;
-  return vals.reduce((a, b) => a + b, 0) / vals.length;
-}
-
-/** Day-by-day average khushu within the period, for a trend line. Skips unrated days. */
-export function khushuTrendSeries(
-  logs: PrayerLog[],
-  from: Date,
-  to: Date
-): { day: string; avg: number }[] {
-  const fromStr = toDayString(from);
-  const toStr = toDayString(to);
-  const byDay = new Map<string, number[]>();
-  for (const l of logs) {
-    if (l.khushu == null) continue;
-    if (l.day < fromStr || l.day > toStr) continue;
-    const arr = byDay.get(l.day) ?? [];
-    arr.push(l.khushu);
-    byDay.set(l.day, arr);
-  }
-  return [...byDay.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([day, vals]) => ({ day, avg: vals.reduce((a, b) => a + b, 0) / vals.length }));
 }
 
 /** How often the sunnah rakats were prayed alongside a completed fard, in the period. */

@@ -15,14 +15,21 @@ create table if not exists public.prayer_logs (
 
 alter table public.prayer_logs enable row level security;
 
-create policy "own prayer_logs: select" on public.prayer_logs
-  for select using (auth.uid() = user_id);
-create policy "own prayer_logs: insert" on public.prayer_logs
-  for insert with check (auth.uid() = user_id);
-create policy "own prayer_logs: update" on public.prayer_logs
-  for update using (auth.uid() = user_id);
-create policy "own prayer_logs: delete" on public.prayer_logs
-  for delete using (auth.uid() = user_id);
+do $$
+begin
+  if not exists (select 1 from pg_policies where tablename = 'prayer_logs' and policyname = 'own prayer_logs: select') then
+    create policy "own prayer_logs: select" on public.prayer_logs for select using (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'prayer_logs' and policyname = 'own prayer_logs: insert') then
+    create policy "own prayer_logs: insert" on public.prayer_logs for insert with check (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'prayer_logs' and policyname = 'own prayer_logs: update') then
+    create policy "own prayer_logs: update" on public.prayer_logs for update using (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'prayer_logs' and policyname = 'own prayer_logs: delete') then
+    create policy "own prayer_logs: delete" on public.prayer_logs for delete using (auth.uid() = user_id);
+  end if;
+end $$;
 
 create table if not exists public.qada_logs (
   id uuid primary key default gen_random_uuid(),
@@ -33,12 +40,18 @@ create table if not exists public.qada_logs (
 
 alter table public.qada_logs enable row level security;
 
-create policy "own qada_logs: select" on public.qada_logs
-  for select using (auth.uid() = user_id);
-create policy "own qada_logs: insert" on public.qada_logs
-  for insert with check (auth.uid() = user_id);
-create policy "own qada_logs: delete" on public.qada_logs
-  for delete using (auth.uid() = user_id);
+do $$
+begin
+  if not exists (select 1 from pg_policies where tablename = 'qada_logs' and policyname = 'own qada_logs: select') then
+    create policy "own qada_logs: select" on public.qada_logs for select using (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'qada_logs' and policyname = 'own qada_logs: insert') then
+    create policy "own qada_logs: insert" on public.qada_logs for insert with check (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'qada_logs' and policyname = 'own qada_logs: delete') then
+    create policy "own qada_logs: delete" on public.qada_logs for delete using (auth.uid() = user_id);
+  end if;
+end $$;
 
 -- ---------------------------------------------------------------------------
 -- Phase A additions: khushu (focus) rating, sunnah tracking, optional Tahajjud
@@ -102,12 +115,18 @@ create table if not exists public.salah_settings (
 
 alter table public.salah_settings enable row level security;
 
-create policy "own salah_settings: select" on public.salah_settings
-  for select using (auth.uid() = user_id);
-create policy "own salah_settings: insert" on public.salah_settings
-  for insert with check (auth.uid() = user_id);
-create policy "own salah_settings: update" on public.salah_settings
-  for update using (auth.uid() = user_id);
+do $$
+begin
+  if not exists (select 1 from pg_policies where tablename = 'salah_settings' and policyname = 'own salah_settings: select') then
+    create policy "own salah_settings: select" on public.salah_settings for select using (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'salah_settings' and policyname = 'own salah_settings: insert') then
+    create policy "own salah_settings: insert" on public.salah_settings for insert with check (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'salah_settings' and policyname = 'own salah_settings: update') then
+    create policy "own salah_settings: update" on public.salah_settings for update using (auth.uid() = user_id);
+  end if;
+end $$;
 
 -- ---------------------------------------------------------------------------
 -- Phase D additions: daily reflection journal, an answered-duas ledger, and
@@ -126,12 +145,18 @@ create table if not exists public.reflections (
 
 alter table public.reflections enable row level security;
 
-create policy "own reflections: select" on public.reflections
-  for select using (auth.uid() = user_id);
-create policy "own reflections: insert" on public.reflections
-  for insert with check (auth.uid() = user_id);
-create policy "own reflections: update" on public.reflections
-  for update using (auth.uid() = user_id);
+do $$
+begin
+  if not exists (select 1 from pg_policies where tablename = 'reflections' and policyname = 'own reflections: select') then
+    create policy "own reflections: select" on public.reflections for select using (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'reflections' and policyname = 'own reflections: insert') then
+    create policy "own reflections: insert" on public.reflections for insert with check (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'reflections' and policyname = 'own reflections: update') then
+    create policy "own reflections: update" on public.reflections for update using (auth.uid() = user_id);
+  end if;
+end $$;
 
 create table if not exists public.answered_duas (
   id uuid primary key default gen_random_uuid(),
@@ -143,14 +168,21 @@ create table if not exists public.answered_duas (
 
 alter table public.answered_duas enable row level security;
 
-create policy "own answered_duas: select" on public.answered_duas
-  for select using (auth.uid() = user_id);
-create policy "own answered_duas: insert" on public.answered_duas
-  for insert with check (auth.uid() = user_id);
-create policy "own answered_duas: update" on public.answered_duas
-  for update using (auth.uid() = user_id);
-create policy "own answered_duas: delete" on public.answered_duas
-  for delete using (auth.uid() = user_id);
+do $$
+begin
+  if not exists (select 1 from pg_policies where tablename = 'answered_duas' and policyname = 'own answered_duas: select') then
+    create policy "own answered_duas: select" on public.answered_duas for select using (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'answered_duas' and policyname = 'own answered_duas: insert') then
+    create policy "own answered_duas: insert" on public.answered_duas for insert with check (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'answered_duas' and policyname = 'own answered_duas: update') then
+    create policy "own answered_duas: update" on public.answered_duas for update using (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'answered_duas' and policyname = 'own answered_duas: delete') then
+    create policy "own answered_duas: delete" on public.answered_duas for delete using (auth.uid() = user_id);
+  end if;
+end $$;
 
 create table if not exists public.intentions (
   id uuid primary key default gen_random_uuid(),
@@ -165,12 +197,18 @@ create table if not exists public.intentions (
 
 alter table public.intentions enable row level security;
 
-create policy "own intentions: select" on public.intentions
-  for select using (auth.uid() = user_id);
-create policy "own intentions: insert" on public.intentions
-  for insert with check (auth.uid() = user_id);
-create policy "own intentions: update" on public.intentions
-  for update using (auth.uid() = user_id);
+do $$
+begin
+  if not exists (select 1 from pg_policies where tablename = 'intentions' and policyname = 'own intentions: select') then
+    create policy "own intentions: select" on public.intentions for select using (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'intentions' and policyname = 'own intentions: insert') then
+    create policy "own intentions: insert" on public.intentions for insert with check (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'intentions' and policyname = 'own intentions: update') then
+    create policy "own intentions: update" on public.intentions for update using (auth.uid() = user_id);
+  end if;
+end $$;
 
 -- Private bucket for voice-note intentions — same user-scoped path pattern as
 -- the 'audio' bucket in setup.sql.
@@ -178,12 +216,18 @@ insert into storage.buckets (id, name, public)
 values ('salah-audio', 'salah-audio', false)
 on conflict (id) do nothing;
 
-create policy "own salah-audio: read" on storage.objects
-  for select using (bucket_id = 'salah-audio' and auth.uid()::text = (storage.foldername(name))[1]);
-create policy "own salah-audio: upload" on storage.objects
-  for insert with check (bucket_id = 'salah-audio' and auth.uid()::text = (storage.foldername(name))[1]);
-create policy "own salah-audio: delete" on storage.objects
-  for delete using (bucket_id = 'salah-audio' and auth.uid()::text = (storage.foldername(name))[1]);
+do $$
+begin
+  if not exists (select 1 from pg_policies where tablename = 'objects' and schemaname = 'storage' and policyname = 'own salah-audio: read') then
+    create policy "own salah-audio: read" on storage.objects for select using (bucket_id = 'salah-audio' and auth.uid()::text = (storage.foldername(name))[1]);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'objects' and schemaname = 'storage' and policyname = 'own salah-audio: upload') then
+    create policy "own salah-audio: upload" on storage.objects for insert with check (bucket_id = 'salah-audio' and auth.uid()::text = (storage.foldername(name))[1]);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'objects' and schemaname = 'storage' and policyname = 'own salah-audio: delete') then
+    create policy "own salah-audio: delete" on storage.objects for delete using (bucket_id = 'salah-audio' and auth.uid()::text = (storage.foldername(name))[1]);
+  end if;
+end $$;
 
 -- ---------------------------------------------------------------------------
 -- Sins tracker: a private accountability log, separate from the original
@@ -203,14 +247,21 @@ create table if not exists public.sin_types (
 
 alter table public.sin_types enable row level security;
 
-create policy "own sin_types: select" on public.sin_types
-  for select using (auth.uid() = user_id);
-create policy "own sin_types: insert" on public.sin_types
-  for insert with check (auth.uid() = user_id);
-create policy "own sin_types: update" on public.sin_types
-  for update using (auth.uid() = user_id);
-create policy "own sin_types: delete" on public.sin_types
-  for delete using (auth.uid() = user_id);
+do $$
+begin
+  if not exists (select 1 from pg_policies where tablename = 'sin_types' and policyname = 'own sin_types: select') then
+    create policy "own sin_types: select" on public.sin_types for select using (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'sin_types' and policyname = 'own sin_types: insert') then
+    create policy "own sin_types: insert" on public.sin_types for insert with check (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'sin_types' and policyname = 'own sin_types: update') then
+    create policy "own sin_types: update" on public.sin_types for update using (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'sin_types' and policyname = 'own sin_types: delete') then
+    create policy "own sin_types: delete" on public.sin_types for delete using (auth.uid() = user_id);
+  end if;
+end $$;
 
 create table if not exists public.sin_logs (
   id uuid primary key default gen_random_uuid(),
@@ -222,12 +273,18 @@ create table if not exists public.sin_logs (
 
 alter table public.sin_logs enable row level security;
 
-create policy "own sin_logs: select" on public.sin_logs
-  for select using (auth.uid() = user_id);
-create policy "own sin_logs: insert" on public.sin_logs
-  for insert with check (auth.uid() = user_id);
-create policy "own sin_logs: delete" on public.sin_logs
-  for delete using (auth.uid() = user_id);
+do $$
+begin
+  if not exists (select 1 from pg_policies where tablename = 'sin_logs' and policyname = 'own sin_logs: select') then
+    create policy "own sin_logs: select" on public.sin_logs for select using (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'sin_logs' and policyname = 'own sin_logs: insert') then
+    create policy "own sin_logs: insert" on public.sin_logs for insert with check (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'sin_logs' and policyname = 'own sin_logs: delete') then
+    create policy "own sin_logs: delete" on public.sin_logs for delete using (auth.uid() = user_id);
+  end if;
+end $$;
 
 -- ---------------------------------------------------------------------------
 -- Rename the 'late' prayer status to 'qada' — a prayer logged after its due

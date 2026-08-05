@@ -6,7 +6,7 @@ export type CorePrayer = (typeof PRAYERS)[number];
 export const OPTIONAL_PRAYERS = ["tahajjud"] as const;
 export type OptionalPrayer = (typeof OPTIONAL_PRAYERS)[number];
 export type Prayer = CorePrayer | OptionalPrayer;
-export type PrayerStatus = "on_time" | "late" | "missed";
+export type PrayerStatus = "on_time" | "qada" | "missed";
 
 export interface PrayerLog {
   id: string;
@@ -141,7 +141,7 @@ export function buildLogMap(logs: PrayerLog[]): LogMap {
 
 export function prayedCount(dayEntry: Partial<Record<Prayer, PrayerStatus>> | undefined): number {
   if (!dayEntry) return 0;
-  return PRAYERS.filter((p) => dayEntry[p] === "on_time" || dayEntry[p] === "late").length;
+  return PRAYERS.filter((p) => dayEntry[p] === "on_time" || dayEntry[p] === "qada").length;
 }
 
 export function isDayComplete(
@@ -232,7 +232,7 @@ export function statusBreakdown(
 ): Record<PrayerStatus, number> {
   const fromStr = toDayString(from);
   const toStr = toDayString(to);
-  const counts: Record<PrayerStatus, number> = { on_time: 0, late: 0, missed: 0 };
+  const counts: Record<PrayerStatus, number> = { on_time: 0, qada: 0, missed: 0 };
   for (const l of logs) {
     if (l.day >= fromStr && l.day <= toStr) counts[l.status]++;
   }
@@ -240,7 +240,7 @@ export function statusBreakdown(
 }
 
 /**
- * On time/late/missed/made-up counts for a period. There's no per-instance link
+ * On time/qada/missed/made-up counts for a period. There's no per-instance link
  * between a missed day and a qada log, so "made up" is an aggregate estimate:
  * whatever fraction of all-time misses (per prayer) have been paid off is applied
  * to that prayer's missed count within the period. Same aggregate model as qadaOwed().
@@ -250,7 +250,7 @@ export function statusBreakdownWithQada(
   qadaLogs: QadaLog[],
   from: Date,
   to: Date
-): { on_time: number; late: number; missed: number; made_up: number } {
+): { on_time: number; qada: number; missed: number; made_up: number } {
   const map = buildLogMap(logs);
   const base = statusBreakdown(logs, from, to);
 
@@ -271,7 +271,7 @@ export function statusBreakdownWithQada(
     stillMissed += missedInPeriod[p] - periodMadeUp;
   }
 
-  return { on_time: base.on_time, late: base.late, missed: stillMissed, made_up: madeUp };
+  return { on_time: base.on_time, qada: base.qada, missed: stillMissed, made_up: madeUp };
 }
 
 /** Missed prayers (all time) minus logged make-ups, floored at zero per prayer. */
@@ -400,7 +400,7 @@ export function sunnahStats(
   let totalPrayed = 0;
   for (const l of logs) {
     if (l.day < fromStr || l.day > toStr) continue;
-    if (l.status === "on_time" || l.status === "late") {
+    if (l.status === "on_time" || l.status === "qada") {
       totalPrayed++;
       if (l.sunnah) prayedWithSunnah++;
     }

@@ -53,6 +53,38 @@
   --on-error: #ffffff;
 }
 
+/* Salah tracker uses a softer, sage-green palette instead of Adios's blue —
+   scoped to .salah-app so the audio library keeps its original colors. */
+:root[data-theme="dark"] .salah-app {
+  --primary: #a3c9a0;
+  --on-primary: #14290f;
+  --primary-container: #3c5a38;
+  --on-primary-container: #c3e8bd;
+  --secondary: #b3c7ad;
+  --on-secondary: #1f2e1b;
+  --secondary-container: #3f5439;
+  --on-secondary-container: #cfe3c8;
+}
+
+:root[data-theme="light"] .salah-app {
+  --primary: #4a7a45;
+  --on-primary: #ffffff;
+  --primary-container: #d7ecd2;
+  --on-primary-container: #0a2007;
+  --secondary: #5c7256;
+  --on-secondary: #ffffff;
+  --secondary-container: #dde8d8;
+  --on-secondary-container: #1a2716;
+}
+
+.salah-app .mesh-gradient {
+  background-image:
+    radial-gradient(at 0% 0%, rgb(63 84 57 / 0.4) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgb(74 122 69 / 0.4) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgb(63 84 57 / 0.2) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgb(163 201 160 / 0.15) 0px, transparent 50%);
+}
+
 @theme {
   --font-sans: "Manrope", -apple-system, "Segoe UI", Roboto, sans-serif;
 

@@ -228,3 +228,28 @@ create policy "own sin_logs: insert" on public.sin_logs
   for insert with check (auth.uid() = user_id);
 create policy "own sin_logs: delete" on public.sin_logs
   for delete using (auth.uid() = user_id);
+
+-- ---------------------------------------------------------------------------
+-- Rename the 'late' prayer status to 'qada' — a prayer logged after its due
+-- time is a qada (make-up) prayer, not merely "late". Safe to re-run.
+-- ---------------------------------------------------------------------------
+
+update public.prayer_logs set status = 'qada' where status = 'late';
+
+do $$
+declare
+  con record;
+begin
+  for con in
+    select conname
+    from pg_constraint
+    where conrelid = 'public.prayer_logs'::regclass
+      and pg_get_constraintdef(oid) like '%status = ANY%'
+  loop
+    execute format('alter table public.prayer_logs drop constraint %I', con.conname);
+  end loop;
+end $$;
+
+alter table public.prayer_logs
+  add constraint prayer_logs_status_check
+  check (status in ('on_time', 'qada', 'missed'));

@@ -72,7 +72,7 @@ function IntentionRow({
 
 const STATUSES: { id: PrayerStatus; label: string }[] = [
   { id: "on_time", label: "On time" },
-  { id: "late", label: "Late" },
+  { id: "qada", label: "Qada" },
   { id: "missed", label: "Missed" }
 ];
 
@@ -81,7 +81,7 @@ function statusClasses(status: PrayerStatus, active: boolean): string {
   switch (status) {
     case "on_time":
       return "bg-primary text-on-primary";
-    case "late":
+    case "qada":
       return "bg-tertiary-container text-on-tertiary-container";
     case "missed":
       // Deliberately muted, not alarming red.
@@ -108,7 +108,7 @@ export function SalahToday({
   const weekCmp = useMemo(() => weekComparison(map, new Date()), [map]);
   const [leaving, setLeaving] = useState<Set<Prayer>>(new Set());
   const [breathingOpen, setBreathingOpen] = useState(false);
-  const [sheet, setSheet] = useState<{ prayer: CorePrayer; status: "on_time" | "late" } | null>(
+  const [sheet, setSheet] = useState<{ prayer: CorePrayer; status: "on_time" | "qada" } | null>(
     null
   );
   const [sunnah, setSunnahVal] = useState(false);
@@ -149,7 +149,7 @@ export function SalahToday({
       easeOut(p);
       return;
     }
-    // Prayed (on time/late) — pause on a quick sheet to note sunnah / an intention.
+    // Prayed (on time/qada) — pause on a quick sheet to note sunnah / an intention.
     setSunnahVal(false);
     setIntentionValue({ text: "", audioBlob: null });
     setSheet({ prayer: p, status });
@@ -263,7 +263,7 @@ export function SalahToday({
         {visiblePrayers.map((p) => {
           const meta = PRAYER_META[p];
           const status = dayEntry?.[p];
-          const prayedThis = status === "on_time" || status === "late";
+          const prayedThis = status === "on_time" || status === "qada";
           const isLeaving = leaving.has(p);
           return (
             <div
@@ -377,7 +377,7 @@ export function SalahToday({
         </div>
       )}
 
-      {/* Sunnah / intention quick sheet, shown after marking a prayer on time/late. */}
+      {/* Sunnah / intention quick sheet, shown after marking a prayer on time/qada. */}
       {sheet && (
         <div
           className="fixed inset-0 z-[80] flex items-end bg-black/50 backdrop-blur-sm"

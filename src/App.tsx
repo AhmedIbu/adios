@@ -302,7 +302,7 @@ export default function App() {
 
   if (app === "salah") {
     return (
-      <>
+      <div className="salah-app">
         <div
           className="mesh-gradient mx-auto min-h-dvh max-w-xl"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6rem)" }}
@@ -345,7 +345,7 @@ export default function App() {
           onToggleShuffle={toggleShuffle}
           onCycleLoop={cycleLoop}
         />
-      </>
+      </div>
     );
   }
 

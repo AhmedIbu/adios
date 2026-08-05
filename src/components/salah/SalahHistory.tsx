@@ -17,7 +17,7 @@ interface Props {
 
 const STATUSES: { id: PrayerStatus; label: string }[] = [
   { id: "on_time", label: "On" },
-  { id: "late", label: "Late" },
+  { id: "qada", label: "Qada" },
   { id: "missed", label: "Miss" }
 ];
 
@@ -26,7 +26,7 @@ function statusBtnClasses(status: PrayerStatus, active: boolean): string {
   switch (status) {
     case "on_time":
       return "bg-primary text-on-primary";
-    case "late":
+    case "qada":
       return "bg-tertiary-container text-on-tertiary-container";
     case "missed":
       return "bg-white/15 text-on-surface";

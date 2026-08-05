@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import type { PrayerLog, QadaLog, SalahSettingsRow } from "../../lib/salah";
+import type { PrayerLog, QadaLog } from "../../lib/salah";
 import {
   PRAYERS,
   PRAYER_LABELS,
@@ -13,16 +13,12 @@ import {
   monthComparison,
   qadaOwed,
   statusBreakdownWithQada,
-  sunnahStats,
   weekComparison
 } from "../../lib/salah";
-import { accuracyByPrayer, formatDelta, hasLocation } from "../../lib/prayertimes";
-import { PRAYER_META } from "./meta";
-import { SalahPrayerTimeSettings } from "./SalahPrayerTimeSettings";
 
-const STATUS_COLORS: Record<"on_time" | "late" | "missed" | "made_up", string> = {
+const STATUS_COLORS: Record<"on_time" | "qada" | "missed" | "made_up", string> = {
   on_time: "var(--color-primary)",
-  late: "var(--color-tertiary-container)",
+  qada: "var(--color-tertiary-container)",
   missed: "rgba(255,255,255,0.15)",
   made_up: "var(--color-secondary)"
 };
@@ -30,8 +26,6 @@ const STATUS_COLORS: Record<"on_time" | "late" | "missed" | "made_up", string> =
 interface Props {
   logs: PrayerLog[];
   qadaLogs: QadaLog[];
-  settings: SalahSettingsRow | null;
-  onSaveSettings: (settings: SalahSettingsRow) => Promise<void>;
 }
 
 const BAR_COLORS: Record<string, string> = {
@@ -42,9 +36,8 @@ const BAR_COLORS: Record<string, string> = {
   isha: "bg-primary-container"
 };
 
-export function SalahStats({ logs, qadaLogs, settings, onSaveSettings }: Props) {
+export function SalahStats({ logs, qadaLogs }: Props) {
   const [range, setRange] = useState<"month" | "all">("month");
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const map = useMemo(() => buildLogMap(logs), [logs]);
 
   const streak = useMemo(() => currentStreak(map, new Date()), [map]);
@@ -70,14 +63,14 @@ export function SalahStats({ logs, qadaLogs, settings, onSaveSettings }: Props) 
       return statusBreakdownWithQada(logs, qadaLogs, from, today);
     }
     const first = firstLoggedDay(map);
-    if (!first) return { on_time: 0, late: 0, missed: 0, made_up: 0 };
+    if (!first) return { on_time: 0, qada: 0, missed: 0, made_up: 0 };
     return statusBreakdownWithQada(logs, qadaLogs, first, today);
   }, [logs, qadaLogs, map, range]);
 
   const pieData = (
     [
       { key: "on_time", name: "On time", value: breakdown.on_time },
-      { key: "late", name: "Late", value: breakdown.late },
+      { key: "qada", name: "Qada", value: breakdown.qada },
       { key: "made_up", name: "Made up", value: breakdown.made_up },
       { key: "missed", name: "Missed", value: breakdown.missed }
     ] as const
@@ -94,23 +87,8 @@ export function SalahStats({ logs, qadaLogs, settings, onSaveSettings }: Props) 
   const owed = useMemo(() => qadaOwed(logs, qadaLogs), [logs, qadaLogs]);
   const totalOwed = PRAYERS.reduce((sum, p) => sum + owed[p], 0);
 
-  const rangeFrom = useMemo(() => {
-    const today = new Date();
-    if (range === "month") return new Date(today.getFullYear(), today.getMonth(), 1);
-    return firstLoggedDay(map) ?? today;
-  }, [map, range]);
-
-  const sunnah = useMemo(() => sunnahStats(logs, rangeFrom, new Date()), [logs, rangeFrom]);
-  const sunnahPct = sunnah.totalPrayed > 0 ? (sunnah.prayedWithSunnah / sunnah.totalPrayed) * 100 : 0;
-
   const weekCmp = useMemo(() => weekComparison(map, new Date()), [map]);
   const monthCmp = useMemo(() => monthComparison(map, new Date()), [map]);
-
-  const accuracy = useMemo(
-    () => accuracyByPrayer(logs, settings, rangeFrom, new Date()),
-    [logs, settings, rangeFrom]
-  );
-  const accuracyEntries = PRAYERS.filter((p) => accuracy[p] !== undefined);
 
   return (
     <section className="space-y-5">
@@ -227,12 +205,12 @@ export function SalahStats({ logs, qadaLogs, settings, onSaveSettings }: Props) 
         </p>
       </div>
 
-      {/* On time / late / missed breakdown */}
+      {/* On time / qada / missed breakdown */}
       <div className="rounded-3xl border border-white/8 bg-surface-glass p-6 backdrop-blur-2xl">
         <div className="mb-2">
           <h3 className="text-lg font-bold text-on-surface">Prayer Breakdown</h3>
           <p className="text-sm text-on-surface-dim">
-            {range === "month" ? "This month" : "All-time"} · on time vs. late vs. missed
+            {range === "month" ? "This month" : "All-time"} · on time vs. qada vs. missed
           </p>
         </div>
         {pieData.length === 0 ? (
@@ -274,84 +252,6 @@ export function SalahStats({ logs, qadaLogs, settings, onSaveSettings }: Props) 
           </div>
         )}
       </div>
-
-      {/* Prayer-time accuracy */}
-      <div className="rounded-3xl border border-white/8 bg-surface-glass p-6 backdrop-blur-2xl">
-        <div className="mb-4 flex items-start justify-between">
-          <div>
-            <h3 className="text-lg font-bold text-on-surface">Prayer-time accuracy</h3>
-            <p className="text-sm text-on-surface-dim">
-              Adhan time vs. when you logged it, computed on-device
-            </p>
-          </div>
-          <button
-            className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-white/5 text-on-surface-dim transition-colors hover:text-primary active:scale-90"
-            onClick={() => setSettingsOpen(true)}
-            aria-label={hasLocation(settings) ? "Edit prayer time settings" : "Set up prayer times"}
-          >
-            <span className="material-symbols-outlined">
-              {hasLocation(settings) ? "tune" : "add_location_alt"}
-            </span>
-          </button>
-        </div>
-        {!hasLocation(settings) ? (
-          <button
-            className="w-full rounded-2xl border border-dashed border-white/15 py-4 text-center text-sm font-semibold text-on-surface-dim transition-colors hover:border-primary/40 hover:text-primary"
-            onClick={() => setSettingsOpen(true)}
-          >
-            Set up your location to see this
-          </button>
-        ) : accuracyEntries.length === 0 ? (
-          <p className="py-4 text-center text-sm text-on-surface-dim">
-            Log a prayer as on time or late to start tracking this.
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {accuracyEntries.map((p) => {
-              const d = accuracy[p] as number;
-              const meta = PRAYER_META[p];
-              return (
-                <div
-                  key={p}
-                  className="flex items-center justify-between rounded-xl border border-white/5 bg-white/5 p-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className={`material-symbols-outlined ${meta.color}`}>{meta.icon}</span>
-                    <span className="text-sm font-bold text-on-surface">{PRAYER_LABELS[p]}</span>
-                  </div>
-                  <span className="text-xs font-bold text-on-surface-dim">
-                    avg {formatDelta(d)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {settingsOpen && (
-        <SalahPrayerTimeSettings
-          settings={settings}
-          onSave={onSaveSettings}
-          onClose={() => setSettingsOpen(false)}
-        />
-      )}
-
-      {/* Sunnah alongside fard */}
-      {sunnah.totalPrayed > 0 && (
-        <div className="rounded-3xl border border-white/8 bg-surface-glass p-6 backdrop-blur-2xl">
-          <p className="mb-1 text-[11px] font-extrabold tracking-widest text-on-surface-dim uppercase">
-            Sunnah alongside fard
-          </p>
-          <h2 className="text-5xl leading-none font-extrabold text-tertiary">
-            {sunnahPct.toFixed(0)}
-            <span className="text-xl opacity-50">%</span>
-          </h2>
-          <p className="mt-2 text-[10px] font-bold tracking-widest text-on-surface-dim uppercase">
-            {sunnah.prayedWithSunnah}/{sunnah.totalPrayed} prayers
-          </p>
-        </div>
-      )}
 
       {/* Missed breakdown */}
       <div className="rounded-3xl border border-white/8 bg-surface-glass p-6 backdrop-blur-2xl">

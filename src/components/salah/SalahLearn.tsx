@@ -3,6 +3,7 @@ import type { AnsweredDua, Reflection } from "../../lib/journal";
 import { SalahReminder } from "./SalahReminder";
 import { SalahQuoteCarousel } from "./SalahQuoteCarousel";
 import { SalahHadith } from "./SalahHadith";
+import { SalahDuaOfWeek } from "./SalahDuaOfWeek";
 import { SalahDuaLibrary } from "./SalahDuaLibrary";
 import { SalahDuaQuiz } from "./SalahDuaQuiz";
 import { SalahSurahOfMonth } from "./SalahSurahOfMonth";
@@ -44,6 +45,7 @@ export function SalahLearn(props: Props) {
         <div className="mx-auto flex max-w-md flex-col gap-5">
           <SalahQuoteCarousel />
           <SalahHadith />
+          <SalahDuaOfWeek />
           <SalahDuaLibrary />
           <SalahDuaQuiz />
           <SalahSurahOfMonth />

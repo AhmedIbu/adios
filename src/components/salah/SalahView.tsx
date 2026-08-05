@@ -29,17 +29,17 @@ import { SalahQada } from "./SalahQada";
 
 // Heavier/less-visited tabs — lazy so their weight only loads when opened.
 const SalahStats = lazy(() => import("./SalahStats").then((m) => ({ default: m.SalahStats })));
-const SalahLearn = lazy(() => import("./SalahLearn").then((m) => ({ default: m.SalahLearn })));
+const SalahSins = lazy(() => import("./SalahSins").then((m) => ({ default: m.SalahSins })));
 const SalahMore = lazy(() => import("./SalahMore").then((m) => ({ default: m.SalahMore })));
 
-type Tab = "today" | "history" | "qada" | "stats" | "learn" | "more";
+type Tab = "today" | "history" | "qada" | "stats" | "sins" | "more";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "today", label: "Today", icon: "today" },
   { id: "history", label: "History", icon: "history" },
   { id: "qada", label: "Qada", icon: "event_busy" },
   { id: "stats", label: "Stats", icon: "insights" },
-  { id: "learn", label: "Learn", icon: "auto_stories" },
+  { id: "sins", label: "Sins", icon: "self_improvement" },
   { id: "more", label: "More", icon: "apps" }
 ];
 
@@ -214,32 +214,29 @@ export function SalahView() {
             <Suspense
               fallback={<p className="px-3 py-10 text-center text-sm text-on-surface-dim">Loading…</p>}
             >
-              <SalahStats
-                logs={logs}
-                qadaLogs={qadaLogs}
-                settings={settings}
-                onSaveSettings={handleSaveSettings}
-              />
+              <SalahStats logs={logs} qadaLogs={qadaLogs} />
             </Suspense>
           )}
-          {tab === "learn" && (
+          {tab === "sins" && (
             <Suspense
               fallback={<p className="px-3 py-10 text-center text-sm text-on-surface-dim">Loading…</p>}
             >
-              <SalahLearn
-                reflections={reflections}
-                onSaveReflection={handleSaveReflection}
-                duas={duas}
-                onAddDua={handleAddDua}
-                onMarkDuaAnswered={handleMarkDuaAnswered}
-              />
+              <SalahSins />
             </Suspense>
           )}
           {tab === "more" && (
             <Suspense
               fallback={<p className="px-3 py-10 text-center text-sm text-on-surface-dim">Loading…</p>}
             >
-              <SalahMore />
+              <SalahMore
+                reflections={reflections}
+                onSaveReflection={handleSaveReflection}
+                duas={duas}
+                onAddDua={handleAddDua}
+                onMarkDuaAnswered={handleMarkDuaAnswered}
+                settings={settings}
+                onSaveSettings={handleSaveSettings}
+              />
             </Suspense>
           )}
         </>

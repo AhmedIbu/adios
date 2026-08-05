@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { Prayer, PrayerLog, QadaLog } from "../../lib/salah";
 import { PRAYERS, PRAYER_LABELS, qadaBacklog, qadaOwed } from "../../lib/salah";
 import { PRAYER_META } from "./meta";
@@ -10,7 +10,6 @@ interface Props {
 }
 
 export function SalahQada({ logs, qadaLogs, onLogQada }: Props) {
-  const [sheetOpen, setSheetOpen] = useState(false);
   const owed = useMemo(() => qadaOwed(logs, qadaLogs), [logs, qadaLogs]);
   const totalOwed = PRAYERS.reduce((sum, p) => sum + owed[p], 0);
   const recent = qadaLogs.slice(0, 5);
@@ -23,18 +22,19 @@ export function SalahQada({ logs, qadaLogs, onLogQada }: Props) {
           Qada Recovery
         </h2>
         <p className="mx-auto max-w-sm text-sm text-on-surface-dim">
-          Everyone falls behind sometimes. Log what you make up here, at your own pace.
+          Everyone falls behind sometimes. Tap a prayer below each time you make one up.
         </p>
       </div>
 
-      {/* Owed tiles */}
-      <div className="mb-8 grid grid-cols-2 gap-3">
+      {/* Owed tiles — tap to log a make-up for that prayer */}
+      <div className="mb-2 grid grid-cols-2 gap-3">
         {PRAYERS.map((p) => {
           const meta = PRAYER_META[p];
           return (
-            <div
+            <button
               key={p}
-              className="relative overflow-hidden rounded-2xl border border-white/8 bg-surface-glass p-5 backdrop-blur-md"
+              className="relative overflow-hidden rounded-2xl border border-white/8 bg-surface-glass p-5 text-left backdrop-blur-md transition-all active:scale-[0.97] hover:border-primary/30"
+              onClick={() => onLogQada(p)}
             >
               <div
                 className={`absolute -top-4 -right-4 h-16 w-16 rounded-full ${meta.iconBg} blur-2xl`}
@@ -50,26 +50,13 @@ export function SalahQada({ logs, qadaLogs, onLogQada }: Props) {
               <p className="text-xl font-bold text-on-surface">
                 {owed[p]} <span className="text-sm font-normal text-on-surface-dim">owed</span>
               </p>
-            </div>
+            </button>
           );
         })}
       </div>
-
-      {/* Log button */}
-      <div className="mb-2 flex flex-col items-center gap-4">
-        <button
-          className="group relative flex h-14 w-full max-w-sm items-center justify-center gap-2 overflow-hidden rounded-full border border-white/10 bg-white/5 transition-all hover:bg-white/10 active:scale-[0.97]"
-          onClick={() => setSheetOpen(true)}
-        >
-          <span className="material-symbols-outlined text-2xl text-primary transition-transform group-hover:rotate-90">
-            add_circle
-          </span>
-          <span className="text-base font-bold text-primary">Log a Qada prayer</span>
-        </button>
-        <p className="text-[10px] font-bold tracking-[0.15em] text-on-surface-dim/60 uppercase">
-          Total remaining: {totalOwed} {totalOwed === 1 ? "prayer" : "prayers"}
-        </p>
-      </div>
+      <p className="mb-8 text-center text-[10px] font-bold tracking-[0.15em] text-on-surface-dim/60 uppercase">
+        Total remaining: {totalOwed} {totalOwed === 1 ? "prayer" : "prayers"}
+      </p>
 
       {/* Backlog — oldest missed prayers still outstanding, burn-down style */}
       {backlog.length > 0 && (
@@ -150,54 +137,6 @@ export function SalahQada({ logs, qadaLogs, onLogQada }: Props) {
         </div>
       )}
 
-      {/* Prayer picker sheet */}
-      {sheetOpen && (
-        <div
-          className="fixed inset-0 z-[80] flex items-end bg-black/50 backdrop-blur-sm"
-          onClick={() => setSheetOpen(false)}
-        >
-          <div
-            className="mx-auto w-full max-w-xl rounded-t-3xl bg-surface pb-8 shadow-2xl"
-            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-center pt-3 pb-1">
-              <div className="h-1 w-10 rounded-full bg-white/20" />
-            </div>
-            <h3 className="px-5 py-3 text-center text-base font-semibold text-on-surface">
-              Which prayer did you make up?
-            </h3>
-            <ul className="pb-2">
-              {PRAYERS.map((p) => {
-                const meta = PRAYER_META[p];
-                return (
-                  <li key={p}>
-                    <button
-                      className="flex w-full items-center gap-4 px-6 py-3.5 text-left hover:bg-white/5"
-                      onClick={() => {
-                        onLogQada(p);
-                        setSheetOpen(false);
-                      }}
-                    >
-                      <span className={`material-symbols-outlined ${meta.color}`}>
-                        {meta.icon}
-                      </span>
-                      <span className="flex-1 text-base font-semibold text-on-surface">
-                        {PRAYER_LABELS[p]}
-                      </span>
-                      {owed[p] > 0 && (
-                        <span className="text-xs font-bold text-on-surface-dim">
-                          {owed[p]} owed
-                        </span>
-                      )}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        </div>
-      )}
     </section>
   );
 }

@@ -34,16 +34,20 @@ const SalahMore = lazy(() => import("./SalahMore").then((m) => ({ default: m.Sal
 
 type Tab = "today" | "history" | "qada" | "stats" | "sins" | "more";
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: "today", label: "Today", icon: "today" },
-  { id: "history", label: "History", icon: "history" },
-  { id: "qada", label: "Qada", icon: "event_busy" },
-  { id: "stats", label: "Stats", icon: "insights" },
-  { id: "sins", label: "Sins", icon: "self_improvement" },
-  { id: "more", label: "More", icon: "apps" }
+const TABS: { id: Tab; label: string; icon: string; title: string }[] = [
+  { id: "today", label: "Today", icon: "today", title: "Today" },
+  { id: "history", label: "History", icon: "calendar_month", title: "History" },
+  { id: "qada", label: "Qada", icon: "history", title: "Qada" },
+  { id: "stats", label: "Stats", icon: "bar_chart", title: "Stats" },
+  { id: "sins", label: "Sins", icon: "do_not_disturb_on", title: "Sins" },
+  { id: "more", label: "More", icon: "more_horiz", title: "More" }
 ];
 
-export function SalahView() {
+interface Props {
+  onSwitchApp: () => void;
+}
+
+export function SalahView({ onSwitchApp }: Props) {
   const [tab, setTab] = useState<Tab>("today");
   const [logs, setLogs] = useState<PrayerLog[]>([]);
   const [qadaLogs, setQadaLogs] = useState<QadaLog[]>([]);
@@ -181,94 +185,154 @@ export function SalahView() {
     }
   }, []);
 
-  return (
-    <div className="pb-24">
-      {loading && (
-        <p className="px-3 py-10 text-center text-sm text-on-surface-dim">Loading…</p>
-      )}
-      {!loading && loadError && (
-        <p className="px-3 py-10 text-center text-sm text-error">{loadError}</p>
-      )}
-      {!loading && !loadError && (
-        <>
-          {tab === "today" && (
-            <SalahToday
-              logs={logs}
-              onSetStatus={handleSetStatus}
-              onClearStatus={handleClearStatus}
-              onSetSunnah={handleSetSunnah}
-              settings={settings}
-              intentions={intentions}
-              onSaveIntentionText={handleSaveIntentionText}
-              onSaveIntentionAudio={handleSaveIntentionAudio}
-              onGetIntentionAudioUrl={intentionAudioUrl}
-            />
-          )}
-          {tab === "history" && (
-            <SalahHistory logs={logs} onSetStatus={handleSetStatus} />
-          )}
-          {tab === "qada" && (
-            <SalahQada logs={logs} qadaLogs={qadaLogs} onLogQada={handleLogQada} />
-          )}
-          {tab === "stats" && (
-            <Suspense
-              fallback={<p className="px-3 py-10 text-center text-sm text-on-surface-dim">Loading…</p>}
-            >
-              <SalahStats logs={logs} qadaLogs={qadaLogs} />
-            </Suspense>
-          )}
-          {tab === "sins" && (
-            <Suspense
-              fallback={<p className="px-3 py-10 text-center text-sm text-on-surface-dim">Loading…</p>}
-            >
-              <SalahSins />
-            </Suspense>
-          )}
-          {tab === "more" && (
-            <Suspense
-              fallback={<p className="px-3 py-10 text-center text-sm text-on-surface-dim">Loading…</p>}
-            >
-              <SalahMore
-                reflections={reflections}
-                onSaveReflection={handleSaveReflection}
-                duas={duas}
-                onAddDua={handleAddDua}
-                onMarkDuaAnswered={handleMarkDuaAnswered}
-                settings={settings}
-                onSaveSettings={handleSaveSettings}
-              />
-            </Suspense>
-          )}
-        </>
-      )}
+  const activeTitle = TABS.find((t) => t.id === tab)?.title ?? "Salah";
 
-      {/* Salah tab bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/5 bg-bg/60 backdrop-blur-2xl">
-        <div
-          className="mx-auto flex max-w-xl items-center justify-around px-4 pt-2"
-          style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom, 0px))" }}
-        >
+  return (
+    <div
+      className="flex min-h-dvh flex-col"
+      style={{ background: "var(--s-surface)", color: "var(--s-on-surface)" }}
+    >
+      {/* Header */}
+      <header
+        className="fixed inset-x-0 top-0 z-50 backdrop-blur-xl"
+        style={{
+          background: "color-mix(in srgb, var(--s-surface) 60%, transparent)",
+          paddingTop: "env(safe-area-inset-top, 0px)",
+          boxShadow: "0 1px 8px rgba(0,0,0,0.02)"
+        }}
+      >
+        <div className="flex h-16 items-center justify-between px-5">
+          <button
+            className="flex h-11 w-11 items-center justify-center rounded-full transition-colors active:scale-90"
+            style={{ color: "var(--s-on-surface)" }}
+            onClick={onSwitchApp}
+            aria-label="Switch app"
+            title="Switch app"
+          >
+            <span className="material-symbols-outlined text-2xl">apps</span>
+          </button>
+          <h1
+            className="font-headline text-2xl tracking-tight"
+            style={{ color: "var(--s-primary)" }}
+          >
+            {activeTitle}
+          </h1>
+          <div
+            className="flex h-8 w-8 items-center justify-center rounded-full"
+            style={{ background: "var(--s-primary)" }}
+          >
+            <span className="material-symbols-outlined text-[18px]" style={{ color: "var(--s-on-primary)" }}>
+              person
+            </span>
+          </div>
+        </div>
+      </header>
+
+      {/* Content */}
+      <main
+        className="s-mesh relative w-full flex-1 px-5"
+        style={{
+          paddingTop: "calc(4rem + env(safe-area-inset-top, 0px))",
+          paddingBottom: "calc(6.5rem + env(safe-area-inset-bottom, 0px))"
+        }}
+      >
+        <div className="animate-app-in pt-6">
+          {loading && (
+            <p className="px-3 py-10 text-center text-sm" style={{ color: "var(--s-on-surface-variant)" }}>
+              Loading…
+            </p>
+          )}
+          {!loading && loadError && (
+            <p className="px-3 py-10 text-center text-sm" style={{ color: "var(--s-error)" }}>
+              {loadError}
+            </p>
+          )}
+          {!loading && !loadError && (
+            <>
+              {tab === "today" && (
+                <SalahToday
+                  logs={logs}
+                  onSetStatus={handleSetStatus}
+                  onClearStatus={handleClearStatus}
+                  onSetSunnah={handleSetSunnah}
+                  settings={settings}
+                  intentions={intentions}
+                  onSaveIntentionText={handleSaveIntentionText}
+                  onSaveIntentionAudio={handleSaveIntentionAudio}
+                  onGetIntentionAudioUrl={intentionAudioUrl}
+                />
+              )}
+              {tab === "history" && <SalahHistory logs={logs} onSetStatus={handleSetStatus} />}
+              {tab === "qada" && (
+                <SalahQada logs={logs} qadaLogs={qadaLogs} onLogQada={handleLogQada} />
+              )}
+              {tab === "stats" && (
+                <Suspense
+                  fallback={
+                    <p className="px-3 py-10 text-center text-sm" style={{ color: "var(--s-on-surface-variant)" }}>
+                      Loading…
+                    </p>
+                  }
+                >
+                  <SalahStats logs={logs} qadaLogs={qadaLogs} />
+                </Suspense>
+              )}
+              {tab === "sins" && (
+                <Suspense
+                  fallback={
+                    <p className="px-3 py-10 text-center text-sm" style={{ color: "var(--s-on-surface-variant)" }}>
+                      Loading…
+                    </p>
+                  }
+                >
+                  <SalahSins />
+                </Suspense>
+              )}
+              {tab === "more" && (
+                <Suspense
+                  fallback={
+                    <p className="px-3 py-10 text-center text-sm" style={{ color: "var(--s-on-surface-variant)" }}>
+                      Loading…
+                    </p>
+                  }
+                >
+                  <SalahMore
+                    reflections={reflections}
+                    onSaveReflection={handleSaveReflection}
+                    duas={duas}
+                    onAddDua={handleAddDua}
+                    onMarkDuaAnswered={handleMarkDuaAnswered}
+                    settings={settings}
+                    onSaveSettings={handleSaveSettings}
+                  />
+                </Suspense>
+              )}
+            </>
+          )}
+        </div>
+      </main>
+
+      {/* Bottom nav */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-50 backdrop-blur-2xl"
+        style={{
+          background: "color-mix(in srgb, var(--s-surface) 80%, transparent)",
+          boxShadow: "0 -4px 24px rgba(22,52,34,0.06)",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)"
+        }}
+      >
+        <div className="flex h-20 items-center justify-around px-2">
           {TABS.map((t) => {
             const active = tab === t.id;
             return (
               <button
                 key={t.id}
-                className={`relative flex flex-col items-center justify-center transition-all duration-200 active:scale-90 ${
-                  active ? "text-primary" : "text-on-surface-dim/60 hover:text-on-surface"
-                }`}
+                className={`flex w-14 flex-col items-center gap-1 transition-all duration-300 ${active ? "scale-110" : ""}`}
+                style={{ color: active ? "var(--s-primary)" : "var(--s-on-surface-variant)" }}
                 onClick={() => setTab(t.id)}
               >
-                <span
-                  className={`material-symbols-outlined text-2xl ${active ? "is-filled" : ""}`}
-                >
-                  {t.icon}
-                </span>
-                <span className="mt-1 text-[9px] font-extrabold tracking-widest uppercase">
-                  {t.label}
-                </span>
-                {active && (
-                  <span className="absolute -bottom-1.5 h-1 w-1 rounded-full bg-primary shadow-[0_0_8px_var(--color-primary)]" />
-                )}
+                <span className="material-symbols-outlined text-[26px]">{t.icon}</span>
+                <span className="text-[12px] font-medium">{t.label}</span>
               </button>
             );
           })}

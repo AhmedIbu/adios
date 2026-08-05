@@ -50,44 +50,38 @@ function IntentionRow({
   }
 
   return (
-    <div className="rounded-xl border border-white/8 bg-surface-glass p-3">
+    <div
+      className="rounded-xl p-3"
+      style={{ background: "var(--s-surface-container-lowest)", border: "1px solid var(--s-outline-variant)" }}
+    >
       <button className="flex w-full items-center justify-between" onClick={handleToggle}>
         <div className="flex items-center gap-2.5">
-          <span className={`material-symbols-outlined text-lg ${meta.color}`}>{meta.icon}</span>
-          <span className="text-sm font-semibold text-on-surface">
+          <span className="material-symbols-outlined text-lg" style={{ color: "var(--s-primary)" }}>
+            {meta.icon}
+          </span>
+          <span className="text-sm font-semibold" style={{ color: "var(--s-on-surface)" }}>
             {PRAYER_LABELS[intention.prayer]}
           </span>
         </div>
-        <span className="material-symbols-outlined text-on-surface-dim/60">
+        <span className="material-symbols-outlined" style={{ color: "var(--s-on-surface-variant)" }}>
           {expanded ? "expand_less" : "expand_more"}
         </span>
       </button>
       {expanded && intention.text && (
-        <p className="mt-2 text-sm text-on-surface-dim">{intention.text}</p>
+        <p className="mt-2 text-sm" style={{ color: "var(--s-on-surface-variant)" }}>
+          {intention.text}
+        </p>
       )}
       {expanded && audioUrl && <audio className="mt-2 w-full" controls src={audioUrl} />}
     </div>
   );
 }
 
-const STATUSES: { id: PrayerStatus; label: string }[] = [
-  { id: "on_time", label: "On time" },
-  { id: "qada", label: "Qada" },
-  { id: "missed", label: "Missed" }
+const STATUSES: { id: PrayerStatus; label: string; icon: string }[] = [
+  { id: "on_time", label: "On Time", icon: "check_circle" },
+  { id: "qada", label: "Qada", icon: "history" },
+  { id: "missed", label: "Missed", icon: "close" }
 ];
-
-function statusClasses(status: PrayerStatus, active: boolean): string {
-  if (!active) return "text-on-surface-dim hover:text-on-surface";
-  switch (status) {
-    case "on_time":
-      return "bg-primary text-on-primary";
-    case "qada":
-      return "bg-tertiary-container text-on-tertiary-container";
-    case "missed":
-      // Deliberately muted, not alarming red.
-      return "bg-white/15 text-on-surface";
-  }
-}
 
 export function SalahToday({
   logs,
@@ -106,7 +100,6 @@ export function SalahToday({
   const prayed = prayedCount(dayEntry);
   const streak = useMemo(() => currentStreak(map, new Date()), [map]);
   const weekCmp = useMemo(() => weekComparison(map, new Date()), [map]);
-  const [leaving, setLeaving] = useState<Set<Prayer>>(new Set());
   const [breathingOpen, setBreathingOpen] = useState(false);
   const [sheet, setSheet] = useState<{ prayer: CorePrayer; status: "on_time" | "qada" } | null>(
     null
@@ -132,21 +125,9 @@ export function SalahToday({
   const pct = (prayed / PRAYERS.length) * 100;
   const circumference = 2 * Math.PI * 40;
 
-  function easeOut(p: Prayer) {
-    setLeaving((prev) => new Set(prev).add(p));
-    window.setTimeout(() => {
-      setLeaving((prev) => {
-        const next = new Set(prev);
-        next.delete(p);
-        return next;
-      });
-    }, 320);
-  }
-
   function handleSetStatus(p: CorePrayer, status: PrayerStatus) {
     if (status === "missed") {
       onSetStatus(todayStr, p, status);
-      easeOut(p);
       return;
     }
     // Prayed (on time/qada) — pause on a quick sheet to note sunnah / an intention.
@@ -164,7 +145,6 @@ export function SalahToday({
     } else if (applyExtras && intentionValue.audioBlob) {
       onSaveIntentionAudio(todayStr, sheet.prayer, intentionValue.audioBlob);
     }
-    easeOut(sheet.prayer);
     setSheet(null);
   }
 
@@ -174,147 +154,258 @@ export function SalahToday({
     else onSetStatus(todayStr, "tahajjud", "on_time");
   }
 
-  const isLoggedToday = (p: Prayer) => !!dayEntry?.[p];
-  const visiblePrayers = PRAYERS.filter((p) => !isLoggedToday(p) || leaving.has(p));
   const tahajjudDone = dayEntry?.tahajjud === "on_time";
+  const nextPrayer = PRAYERS.find((p) => !dayEntry?.[p]) ?? null;
+  const nextMeta = nextPrayer ? PRAYER_META[nextPrayer] : null;
+  const nextTime =
+    nextPrayer && todayTimes
+      ? todayTimes[nextPrayer].toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+      : null;
 
   return (
-    <section>
-      {/* Streak */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-xl font-bold tracking-tight text-on-surface">Today</h2>
-        <div className="flex flex-wrap items-center justify-end gap-2">
+    <section className="flex flex-col gap-6 pb-6">
+      {/* Badges row */}
+      {(weekCmp?.isNewBest || streak > 0) && (
+        <div className="flex flex-wrap items-center gap-2">
           {weekCmp?.isNewBest && (
-            <div className="flex items-center gap-1.5 rounded-full border border-tertiary-container/40 bg-tertiary-container/30 px-3.5 py-1.5">
-              <span className="material-symbols-outlined is-filled text-sm text-tertiary">
+            <div
+              className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5"
+              style={{ background: "var(--s-tertiary-container)", opacity: 0.9 }}
+            >
+              <span className="material-symbols-outlined text-sm" style={{ color: "var(--s-on-tertiary-container)" }}>
                 emoji_events
               </span>
-              <span className="text-[11px] font-extrabold tracking-widest text-tertiary uppercase">
+              <span
+                className="text-[11px] font-bold tracking-widest uppercase"
+                style={{ color: "var(--s-on-tertiary-container)" }}
+              >
                 New best week
               </span>
             </div>
           )}
           {streak > 0 && (
-            <div className="flex items-center gap-1.5 rounded-full border border-secondary-container/40 bg-secondary-container/30 px-3.5 py-1.5">
+            <div
+              className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5"
+              style={{ background: "var(--s-secondary-container)" }}
+            >
               <span aria-hidden="true">🔥</span>
-              <span className="text-[11px] font-extrabold tracking-widest text-secondary uppercase">
+              <span
+                className="text-[11px] font-bold tracking-widest uppercase"
+                style={{ color: "var(--s-on-secondary-container)" }}
+              >
                 {streak} day streak
               </span>
             </div>
           )}
         </div>
-      </div>
+      )}
 
-      {/* Progress card */}
-      <div className="relative mb-6 flex items-center justify-between overflow-hidden rounded-3xl border border-white/8 bg-surface-glass p-6 backdrop-blur-2xl">
-        <div className="absolute -top-12 -right-12 h-48 w-48 rounded-full bg-primary/5 blur-3xl" />
+      {/* Daily Progress card */}
+      <div
+        className="relative flex items-center justify-between overflow-hidden rounded-3xl p-5"
+        style={{ background: "var(--s-surface-container)" }}
+      >
+        <div
+          className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full blur-3xl"
+          style={{ background: "color-mix(in srgb, var(--s-primary-fixed) 20%, transparent)" }}
+        />
         <div className="z-10">
-          <p className="mb-1 text-[11px] font-extrabold tracking-widest text-primary uppercase">
-            Your progress
-          </p>
-          <h3 className="text-xl font-bold text-on-surface">
-            {prayed} of {PRAYERS.length} Prayers
-          </h3>
-          <p className="mt-1 text-sm text-on-surface-dim">
-            {prayed === PRAYERS.length
-              ? "All prayers completed. Alhamdulillah!"
-              : "Log each prayer as your day goes."}
+          <h2 className="font-headline text-2xl" style={{ color: "var(--s-on-surface)" }}>
+            Daily Progress
+          </h2>
+          <p className="mt-1 text-sm" style={{ color: "var(--s-on-surface-variant)" }}>
+            {prayed} of {PRAYERS.length} obligatory prayers completed
           </p>
         </div>
-        <div className="relative z-10 h-24 w-24 flex-none">
-          <svg className="h-full w-full -rotate-90" viewBox="0 0 96 96">
+        <div className="relative z-10 h-20 w-20 flex-none">
+          <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">
             <circle
-              className="text-white/5"
-              strokeWidth="8"
-              stroke="currentColor"
-              fill="transparent"
+              cx="50"
+              cy="50"
               r="40"
-              cx="48"
-              cy="48"
+              fill="none"
+              stroke="var(--s-surface-variant)"
+              strokeWidth="8"
+              strokeLinecap="round"
             />
             <circle
-              className="text-primary transition-all duration-500"
+              cx="50"
+              cy="50"
+              r="40"
+              fill="none"
+              stroke="var(--s-primary)"
               strokeWidth="8"
+              strokeLinecap="round"
               strokeDasharray={circumference}
               strokeDashoffset={circumference * (1 - pct / 100)}
-              strokeLinecap="round"
-              stroke="currentColor"
-              fill="transparent"
-              r="40"
-              cx="48"
-              cy="48"
+              className="transition-all duration-700"
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-lg font-bold text-primary">{Math.round(pct)}%</span>
+            <span className="text-sm font-bold" style={{ color: "var(--s-on-surface)" }}>
+              {Math.round(pct)}%
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Prayer cards */}
-      <div>
-        {visiblePrayers.length === 0 && (
-          <div className="rounded-2xl border border-white/8 bg-surface-glass p-6 text-center backdrop-blur-md">
-            <p className="text-sm font-semibold text-on-surface-dim">
-              All prayers logged for today. Alhamdulillah!
-            </p>
+      {/* Active / next prayer highlight */}
+      {nextPrayer && nextMeta && (
+        <div
+          className="relative overflow-hidden rounded-3xl p-5 shadow-[0_4px_24px_rgba(22,52,34,0.08)]"
+          style={{ background: "var(--s-surface-container-low)" }}
+        >
+          <div
+            className="pointer-events-none absolute -left-10 -top-10 h-32 w-32 rounded-full blur-2xl"
+            style={{ background: "color-mix(in srgb, var(--s-primary-fixed) 40%, transparent)" }}
+          />
+          <div className="relative z-10 mb-4 flex items-start justify-between">
+            <div>
+              <div className="mb-1 flex items-center gap-2">
+                <span className="h-2 w-2 animate-pulse rounded-full" style={{ background: "var(--s-primary)" }} />
+                <span
+                  className="text-[11px] font-bold uppercase tracking-widest"
+                  style={{ color: "var(--s-primary)" }}
+                >
+                  Next Prayer
+                </span>
+              </div>
+              <h3 className="font-headline text-4xl" style={{ color: "var(--s-on-surface)" }}>
+                {PRAYER_LABELS[nextPrayer]}
+              </h3>
+            </div>
+            {nextTime && (
+              <div className="text-right">
+                <p className="text-xl font-headline" style={{ color: "var(--s-on-surface)" }}>
+                  {nextTime}
+                </p>
+              </div>
+            )}
           </div>
-        )}
-        {visiblePrayers.map((p) => {
+
+          <div className="relative z-10 flex gap-3">
+            <button
+              className="flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide transition-transform active:scale-95"
+              style={{ background: "var(--s-primary)", color: "var(--s-on-primary)" }}
+              onClick={() => handleSetStatus(nextPrayer, "on_time")}
+            >
+              <span className="material-symbols-outlined text-[20px]">check_circle</span> On Time
+            </button>
+            <button
+              className="flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide transition-transform active:scale-95"
+              style={{ background: "var(--s-surface-container-high)", color: "var(--s-on-surface)" }}
+              onClick={() => handleSetStatus(nextPrayer, "qada")}
+            >
+              <span className="material-symbols-outlined text-[20px]">history</span> Qada
+            </button>
+            <button
+              className="flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide transition-transform active:scale-95"
+              style={{
+                background: "color-mix(in srgb, var(--s-error-container) 30%, transparent)",
+                color: "var(--s-error)",
+                border: "1px solid color-mix(in srgb, var(--s-error) 20%, transparent)"
+              }}
+              onClick={() => handleSetStatus(nextPrayer, "missed")}
+            >
+              <span className="material-symbols-outlined text-[20px]">close</span> Missed
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Today's Log */}
+      <div className="flex flex-col gap-3">
+        <h3 className="px-1 font-headline text-2xl" style={{ color: "var(--s-on-surface)" }}>
+          Today's Log
+        </h3>
+        {PRAYERS.map((p) => {
           const meta = PRAYER_META[p];
           const status = dayEntry?.[p];
-          const prayedThis = status === "on_time" || status === "qada";
-          const isLeaving = leaving.has(p);
+          const isLogged = status === "on_time" || status === "qada";
+          const isMissed = status === "missed";
           return (
             <div
               key={p}
-              className={`overflow-hidden transition-all duration-300 ease-out ${
-                isLeaving
-                  ? "mb-0 max-h-0 scale-95 opacity-0"
-                  : "mb-3 max-h-[320px] scale-100 opacity-100"
-              }`}
+              className="flex flex-col gap-3 rounded-2xl p-4 shadow-sm"
+              style={{ background: "var(--s-surface-container-lowest)", border: "1px solid var(--s-surface-container)" }}
             >
-              <div className="flex flex-col gap-3 rounded-2xl border border-white/8 bg-surface-glass p-4 backdrop-blur-md">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3.5">
-                    <div
-                      className={`flex h-11 w-11 items-center justify-center rounded-full border border-white/10 ${meta.iconBg} ${meta.color}`}
-                    >
-                      <span className="material-symbols-outlined is-filled">{meta.icon}</span>
-                    </div>
-                    <h4 className="text-base font-bold text-on-surface">{PRAYER_LABELS[p]}</h4>
-                  </div>
-                  <span
-                    className={`material-symbols-outlined ${
-                      prayedThis
-                        ? "is-filled text-primary"
-                        : status === "missed"
-                          ? "text-on-surface-dim/50"
-                          : "text-on-surface-dim/20"
-                    }`}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="flex h-10 w-10 items-center justify-center rounded-full"
+                    style={{
+                      background: isLogged ? "var(--s-primary-container)" : "var(--s-surface-variant)"
+                    }}
                   >
-                    {prayedThis
-                      ? "check_circle"
-                      : status === "missed"
-                        ? "do_not_disturb_on"
-                        : "radio_button_unchecked"}
-                  </span>
-                </div>
-                <div className="grid grid-cols-3 gap-1.5 rounded-full border border-white/5 bg-black/20 p-1">
-                  {STATUSES.map((s) => (
-                    <button
-                      key={s.id}
-                      className={`rounded-full py-2 text-center text-[11px] font-extrabold tracking-widest uppercase transition-colors duration-200 ${statusClasses(
-                        s.id,
-                        status === s.id
-                      )}`}
-                      onClick={() => handleSetStatus(p, s.id)}
-                      aria-pressed={status === s.id}
+                    <span
+                      className="material-symbols-outlined text-[20px]"
+                      style={{ color: isLogged ? "var(--s-on-primary-container)" : "var(--s-on-surface-variant)" }}
                     >
-                      {s.label}
-                    </button>
-                  ))}
+                      {meta.icon}
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="text-base font-semibold" style={{ color: "var(--s-on-surface)" }}>
+                      {PRAYER_LABELS[p]}
+                    </h4>
+                    {todayTimes && (
+                      <p className="text-xs" style={{ color: "var(--s-on-surface-variant)" }}>
+                        {todayTimes[p].toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                      </p>
+                    )}
+                  </div>
                 </div>
+                {isLogged && (
+                  <div
+                    className="flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold"
+                    style={{
+                      background: status === "qada" ? "var(--s-tertiary-container)" : "var(--s-primary-fixed)",
+                      color: status === "qada" ? "var(--s-on-tertiary-container)" : "var(--s-on-primary-fixed)"
+                    }}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                    {status === "qada" ? "Qada" : "Logged"}
+                  </div>
+                )}
+                {isMissed && (
+                  <div
+                    className="rounded-full px-3 py-1 text-[11px] font-bold"
+                    style={{ background: "var(--s-error-container)", color: "var(--s-on-error-container)" }}
+                  >
+                    Missed
+                  </div>
+                )}
+                {!status && p !== nextPrayer && (
+                  <span className="text-[11px]" style={{ color: "var(--s-on-surface-variant)" }}>
+                    Upcoming
+                  </span>
+                )}
+              </div>
+
+              {/* Quick status switcher — always available so a logged prayer can be corrected. */}
+              <div
+                className="grid grid-cols-3 gap-1 rounded-full p-1"
+                style={{ background: "var(--s-surface-container-high)" }}
+              >
+                {STATUSES.map((s) => (
+                  <button
+                    key={s.id}
+                    className="rounded-full py-1.5 text-center text-[10px] font-bold uppercase tracking-wide transition-colors"
+                    style={
+                      status === s.id
+                        ? s.id === "missed"
+                          ? { background: "var(--s-error-container)", color: "var(--s-on-error-container)" }
+                          : s.id === "qada"
+                            ? { background: "var(--s-tertiary-container)", color: "var(--s-on-tertiary-container)" }
+                            : { background: "var(--s-primary)", color: "var(--s-on-primary)" }
+                        : { color: "var(--s-on-surface-variant)" }
+                    }
+                    onClick={() => handleSetStatus(p, s.id)}
+                    aria-pressed={status === s.id}
+                  >
+                    {s.label}
+                  </button>
+                ))}
               </div>
             </div>
           );
@@ -322,53 +413,88 @@ export function SalahToday({
       </div>
 
       {/* Tahajjud — optional bonus slot, never affects the 5-prayer streak. */}
-      <button
-        className={`mt-3 flex w-full items-center gap-3.5 rounded-2xl border p-4 text-left transition-colors duration-200 ${
-          tahajjudDone
-            ? "border-secondary/30 bg-secondary/10"
-            : "border-white/8 bg-surface-glass hover:bg-white/5"
-        }`}
-        onClick={toggleTahajjud}
+      <div
+        className="relative overflow-hidden rounded-3xl p-5 shadow-sm"
+        style={{
+          background: "linear-gradient(to bottom right, var(--s-surface-container), var(--s-surface-container-high))",
+          border: "1px solid var(--s-outline-variant)"
+        }}
       >
         <div
-          className={`flex h-11 w-11 items-center justify-center rounded-full border border-white/10 ${PRAYER_META.tahajjud.iconBg} ${PRAYER_META.tahajjud.color}`}
-        >
-          <span className="material-symbols-outlined is-filled">
-            {PRAYER_META.tahajjud.icon}
-          </span>
+          className="pointer-events-none absolute right-0 top-0 h-32 w-32"
+          style={{
+            background:
+              "radial-gradient(ellipse at top right, color-mix(in srgb, var(--s-tertiary-fixed) 30%, transparent), transparent)"
+          }}
+        />
+        <div className="relative z-10 mb-4 flex items-center justify-between">
+          <div>
+            <h3 className="font-headline text-xl" style={{ color: "var(--s-on-surface)" }}>
+              Tahajjud
+            </h3>
+            <p className="text-xs" style={{ color: "var(--s-on-surface-variant)" }}>
+              Voluntary Night Prayer
+            </p>
+          </div>
+          <div
+            className="flex h-11 w-11 items-center justify-center rounded-full shadow-sm"
+            style={{ background: "var(--s-tertiary-container)" }}
+          >
+            <span className="material-symbols-outlined text-[22px]" style={{ color: "var(--s-on-tertiary-container)" }}>
+              bedtime
+            </span>
+          </div>
         </div>
-        <div className="flex-1">
-          <h4 className="text-base font-bold text-on-surface">Tahajjud</h4>
-          <p className="text-xs text-on-surface-dim">Optional night prayer</p>
-        </div>
-        <span
-          className={`material-symbols-outlined ${tahajjudDone ? "is-filled text-secondary" : "text-on-surface-dim/20"}`}
+        <button
+          className="relative z-10 flex w-full items-center justify-center gap-2 rounded-full py-3 text-sm font-bold transition-colors"
+          style={{
+            background: tahajjudDone ? "var(--s-primary-fixed)" : "var(--s-surface-container-lowest)",
+            color: tahajjudDone ? "var(--s-on-primary-fixed)" : "var(--s-on-surface)",
+            border: "1px solid var(--s-outline-variant)"
+          }}
+          onClick={toggleTahajjud}
         >
-          {tahajjudDone ? "check_circle" : "radio_button_unchecked"}
-        </span>
-      </button>
+          <span className="material-symbols-outlined text-[20px]">{tahajjudDone ? "check_circle" : "add"}</span>
+          {tahajjudDone ? "Logged" : "Log Tahajjud"}
+        </button>
+      </div>
 
       {/* Breathing exercise — a moment to settle before prayer. */}
       <button
-        className="mt-3 flex w-full items-center gap-3.5 rounded-2xl border border-white/8 bg-surface-glass p-4 text-left transition-colors duration-200 hover:bg-white/5"
+        className="flex w-full items-center gap-3.5 rounded-2xl p-4 text-left shadow-sm transition-colors"
+        style={{ background: "var(--s-surface-container-lowest)", border: "1px solid var(--s-surface-container)" }}
         onClick={() => setBreathingOpen(true)}
       >
-        <div className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-primary/10 text-primary">
-          <span className="material-symbols-outlined is-filled">self_improvement</span>
+        <div
+          className="flex h-11 w-11 items-center justify-center rounded-full"
+          style={{ background: "var(--s-primary-container)" }}
+        >
+          <span className="material-symbols-outlined" style={{ color: "var(--s-on-primary-container)" }}>
+            self_improvement
+          </span>
         </div>
         <div className="flex-1">
-          <h4 className="text-base font-bold text-on-surface">Breathing exercise</h4>
-          <p className="text-xs text-on-surface-dim">A moment to settle before you pray</p>
+          <h4 className="text-sm font-bold" style={{ color: "var(--s-on-surface)" }}>
+            Breathing exercise
+          </h4>
+          <p className="text-xs" style={{ color: "var(--s-on-surface-variant)" }}>
+            A moment to settle before you pray
+          </p>
         </div>
-        <span className="material-symbols-outlined text-on-surface-dim/40">chevron_right</span>
+        <span className="material-symbols-outlined" style={{ color: "var(--s-on-surface-variant)" }}>
+          chevron_right
+        </span>
       </button>
 
       {breathingOpen && <SalahBreathing onClose={() => setBreathingOpen(false)} />}
 
       {/* Today's intentions — tap to replay/read what you noted when logging. */}
       {todaysIntentions.length > 0 && (
-        <div className="mt-3 space-y-2">
-          <p className="px-1 text-[11px] font-extrabold tracking-widest text-on-surface-dim uppercase">
+        <div className="space-y-2">
+          <p
+            className="px-1 text-[11px] font-bold uppercase tracking-widest"
+            style={{ color: "var(--s-on-surface-variant)" }}
+          >
             Today's intentions
           </p>
           {todaysIntentions.map((it) => (
@@ -384,21 +510,27 @@ export function SalahToday({
           onClick={() => confirmSheet(false)}
         >
           <div
-            className="mx-auto w-full max-w-xl rounded-t-3xl bg-surface pb-8 shadow-2xl"
-            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
+            className="mx-auto w-full max-w-xl rounded-t-3xl pb-8 shadow-2xl"
+            style={{
+              paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)",
+              background: "var(--s-surface-container-lowest)"
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-center pt-3 pb-1">
-              <div className="h-1 w-10 rounded-full bg-white/20" />
+              <div className="h-1 w-10 rounded-full" style={{ background: "var(--s-outline-variant)" }} />
             </div>
-            <h3 className="px-5 pt-2 pb-1 text-center text-base font-semibold text-on-surface">
+            <h3
+              className="px-5 pt-2 pb-1 text-center text-base font-semibold"
+              style={{ color: "var(--s-on-surface)" }}
+            >
               How was your {PRAYER_LABELS[sheet.prayer]}?
             </h3>
-            <p className="px-5 pb-4 text-center text-xs text-on-surface-dim">
+            <p className="px-5 pb-4 text-center text-xs" style={{ color: "var(--s-on-surface-variant)" }}>
               Optional — note the sunnah or an intention.
             </p>
             {sheetDelta != null && (
-              <p className="px-5 pb-4 text-center text-xs font-semibold text-primary">
+              <p className="px-5 pb-4 text-center text-xs font-semibold" style={{ color: "var(--s-primary)" }}>
                 {sheet && PRAYER_LABELS[sheet.prayer]} adhan was{" "}
                 {todayTimes &&
                   sheet &&
@@ -411,16 +543,16 @@ export function SalahToday({
             )}
             <div className="px-6">
               <button
-                className="flex w-full items-center justify-between rounded-2xl border border-white/8 bg-white/5 px-4 py-3"
+                className="flex w-full items-center justify-between rounded-2xl px-4 py-3"
+                style={{ background: "var(--s-surface-container)" }}
                 onClick={() => setSunnahVal((v) => !v)}
               >
-                <span className="text-sm font-semibold text-on-surface">
+                <span className="text-sm font-semibold" style={{ color: "var(--s-on-surface)" }}>
                   I also prayed the sunnah
                 </span>
                 <span
-                  className={`flex h-6 w-11 flex-none items-center rounded-full p-0.5 transition-colors ${
-                    sunnah ? "bg-primary" : "bg-white/15"
-                  }`}
+                  className="flex h-6 w-11 flex-none items-center rounded-full p-0.5 transition-colors"
+                  style={{ background: sunnah ? "var(--s-primary)" : "var(--s-outline-variant)" }}
                 >
                   <span
                     className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${
@@ -437,13 +569,15 @@ export function SalahToday({
 
               <div className="mt-6 flex gap-3">
                 <button
-                  className="flex-1 rounded-full border border-white/10 py-3 text-sm font-bold text-on-surface-dim"
+                  className="flex-1 rounded-full py-3 text-sm font-bold"
+                  style={{ border: "1px solid var(--s-outline-variant)", color: "var(--s-on-surface-variant)" }}
                   onClick={() => confirmSheet(false)}
                 >
                   Skip
                 </button>
                 <button
-                  className="flex-1 rounded-full bg-primary py-3 text-sm font-bold text-on-primary"
+                  className="flex-1 rounded-full py-3 text-sm font-bold"
+                  style={{ background: "var(--s-primary)", color: "var(--s-on-primary)" }}
                   onClick={() => confirmSheet(true)}
                 >
                   Save

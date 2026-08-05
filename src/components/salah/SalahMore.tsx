@@ -28,23 +28,28 @@ export function SalahMore({ settings, onSaveSettings, ...learnProps }: Props) {
         <SalahHijriCalendar />
         <SalahIslamicEvents />
         <SalahZakahCalculator />
-        <button
-          className="flex items-center gap-3.5 rounded-2xl border border-white/8 bg-surface-glass p-4 text-left backdrop-blur-md transition-colors hover:bg-white/5"
-          onClick={() => setSettingsOpen(true)}
-        >
-          <div className="flex h-11 w-11 flex-none items-center justify-center rounded-full border border-white/10 bg-primary/10 text-primary">
-            <span className="material-symbols-outlined is-filled">
-              {hasLocation(settings) ? "tune" : "add_location_alt"}
-            </span>
+
+        {/* Tools row */}
+        <div className="mt-2 mb-8">
+          <h3 className="mb-4 ml-1 text-[12px] font-bold uppercase tracking-widest text-on-surface-dim">
+            More tools
+          </h3>
+          <div className="flex justify-between gap-4 rounded-xl border border-white/10 bg-surface-glass p-4">
+            <button
+              className="group flex flex-1 flex-col items-center gap-2"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-surface text-primary shadow-sm transition-colors group-hover:bg-primary group-hover:text-on-primary">
+                <span className="material-symbols-outlined">
+                  {hasLocation(settings) ? "tune" : "add_location_alt"}
+                </span>
+              </div>
+              <span className="text-center text-[11px] font-medium text-on-surface">
+                Prayer settings
+              </span>
+            </button>
           </div>
-          <div className="flex-1">
-            <h4 className="text-base font-bold text-on-surface">Prayer time settings</h4>
-            <p className="text-xs text-on-surface-dim">
-              {hasLocation(settings) ? "Location & calculation method" : "Set up your location"}
-            </p>
-          </div>
-          <span className="material-symbols-outlined text-on-surface-dim/40">chevron_right</span>
-        </button>
+        </div>
       </div>
 
       {settingsOpen && (

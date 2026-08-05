@@ -21,29 +21,7 @@ const STATUSES: { id: PrayerStatus; label: string }[] = [
   { id: "missed", label: "Miss" }
 ];
 
-function statusBtnClasses(status: PrayerStatus, active: boolean): string {
-  if (!active) return "text-on-surface-dim/50 hover:text-on-surface";
-  switch (status) {
-    case "on_time":
-      return "bg-primary text-on-primary";
-    case "qada":
-      return "bg-tertiary-container text-on-tertiary-container";
-    case "missed":
-      return "bg-white/15 text-on-surface";
-  }
-}
-
-const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-// Index = number of prayed prayers that day (0–5). Red (none) -> orange (some) -> green (all 5).
-const INTENSITY = [
-  "bg-red-500 border-red-600 text-white",
-  "bg-orange-500 border-orange-600 text-white",
-  "bg-amber-500 border-amber-600 text-white",
-  "bg-yellow-500 border-yellow-600 text-black",
-  "bg-lime-500 border-lime-600 text-black",
-  "bg-green-500 border-green-600 text-white"
-];
+const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
 
 function hijriLabel(d: Date): string | null {
   try {
@@ -61,17 +39,20 @@ export function SalahHistory({ logs, onSetStatus }: Props) {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(() => toDayString(new Date()));
 
   const map = useMemo(() => buildLogMap(logs), [logs]);
   const todayStr = toDayString(new Date());
 
   const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
-  const offset = (month.getDay() + 6) % 7; // Monday-first
+  const offset = month.getDay(); // Sunday-first, matches mockup's S M T W T F S header
   const monthLabel = month.toLocaleDateString("en-US", { month: "long", year: "numeric" });
   const hijri = hijriLabel(new Date(month.getFullYear(), month.getMonth(), 15));
 
   const selectedEntry = selectedDay ? map.get(selectedDay) : undefined;
+  const selectedCount = prayedCount(selectedEntry);
+  const selectedPct = (selectedCount / PRAYERS.length) * 100;
+  const circumference = 2 * Math.PI * 16;
 
   function shiftMonth(delta: number) {
     setMonth((m) => new Date(m.getFullYear(), m.getMonth() + delta, 1));
@@ -79,43 +60,49 @@ export function SalahHistory({ logs, onSetStatus }: Props) {
   }
 
   return (
-    <section className="space-y-6">
+    <section className="flex flex-col gap-6 pb-6">
       {/* Month navigation */}
-      <div className="flex items-center justify-between rounded-2xl border border-white/8 bg-surface-glass p-4 backdrop-blur-md">
-        <button
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-on-surface-dim transition-colors hover:text-primary active:scale-90"
-          onClick={() => shiftMonth(-1)}
-          aria-label="Previous month"
-        >
-          <span className="material-symbols-outlined">chevron_left</span>
-        </button>
-        <div className="text-center">
-          <h2 className="text-xl font-bold tracking-tight text-on-surface">{monthLabel}</h2>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-headline text-2xl" style={{ color: "var(--s-primary)" }}>
+            {monthLabel}
+          </h2>
           {hijri && (
-            <p className="mt-0.5 text-[10px] font-bold tracking-widest text-primary/60 uppercase">
+            <p className="mt-0.5 text-[10px] font-bold tracking-widest uppercase" style={{ color: "var(--s-on-surface-variant)" }}>
               {hijri}
             </p>
           )}
         </div>
-        <button
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-on-surface-dim transition-colors hover:text-primary active:scale-90"
-          onClick={() => shiftMonth(1)}
-          aria-label="Next month"
-        >
-          <span className="material-symbols-outlined">chevron_right</span>
-        </button>
+        <div className="flex gap-2">
+          <button
+            className="flex h-10 w-10 items-center justify-center rounded-full transition-transform active:scale-95"
+            style={{ background: "var(--s-surface-container)", color: "var(--s-on-surface-variant)" }}
+            onClick={() => shiftMonth(-1)}
+            aria-label="Previous month"
+          >
+            <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+          </button>
+          <button
+            className="flex h-10 w-10 items-center justify-center rounded-full transition-transform active:scale-95"
+            style={{ background: "var(--s-surface-container)", color: "var(--s-on-surface-variant)" }}
+            onClick={() => shiftMonth(1)}
+            aria-label="Next month"
+          >
+            <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+          </button>
+        </div>
       </div>
 
-      {/* Heatmap — deliberately a plain white card so the red-to-green gradient reads clearly. */}
-      <div className="rounded-3xl border border-black/5 bg-white p-5 shadow-lg">
-        <div className="mb-3 grid grid-cols-7 gap-2 text-center">
-          {WEEKDAYS.map((w) => (
-            <span key={w} className="text-[9px] font-bold tracking-widest text-gray-500 uppercase">
+      {/* Calendar */}
+      <div>
+        <div className="mb-4 grid grid-cols-7 gap-y-4 gap-x-2 text-center">
+          {WEEKDAYS.map((w, i) => (
+            <div key={i} className="text-[12px] font-medium" style={{ color: "var(--s-on-surface-variant)" }}>
               {w}
-            </span>
+            </div>
           ))}
         </div>
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-y-3 gap-x-2 text-center">
           {Array.from({ length: offset }).map((_, i) => (
             <div key={`pad-${i}`} />
           ))}
@@ -125,22 +112,48 @@ export function SalahHistory({ logs, onSetStatus }: Props) {
             const isFuture = dayStr > todayStr;
             const count = prayedCount(map.get(dayStr));
             const selected = selectedDay === dayStr;
+            const isToday = dayStr === todayStr;
             const perfect = !isFuture && isPerfectDay(logs, dayStr);
+
+            let bg = "transparent";
+            let color = "var(--s-on-surface)";
+            if (isFuture) {
+              color = "var(--s-outline-variant)";
+            } else if (count === 0) {
+              bg = "var(--s-surface-container)";
+            } else if (count >= PRAYERS.length) {
+              bg = "var(--s-primary-fixed)";
+              color = "var(--s-on-primary-fixed)";
+            } else {
+              bg = "var(--s-tertiary-fixed)";
+              color = "var(--s-on-tertiary-fixed-variant)";
+            }
+            if (selected) {
+              bg = "var(--s-primary)";
+              color = "var(--s-on-primary)";
+            }
+
             return (
               <button
                 key={dayStr}
-                className={`relative flex aspect-square items-center justify-center rounded-lg border text-[11px] font-bold transition-all duration-200 active:scale-90 ${
-                  isFuture ? "border-gray-100 text-gray-300" : INTENSITY[count]
-                } ${selected ? "ring-2 ring-blue-600" : ""} ${
-                  perfect ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-white" : ""
-                }`}
+                className="relative mx-auto flex h-10 w-10 items-center justify-center rounded-full text-sm transition-all active:scale-95"
+                style={{
+                  background: bg,
+                  color,
+                  boxShadow: selected ? "0 4px 12px rgba(22,52,34,0.3)" : undefined,
+                  outline: isToday && !selected ? "2px solid var(--s-primary)" : undefined,
+                  outlineOffset: isToday && !selected ? "2px" : undefined
+                }}
                 onClick={() => !isFuture && setSelectedDay(selected ? null : dayStr)}
                 disabled={isFuture}
                 aria-label={`${dayStr}: ${count} of 5 prayed${perfect ? ", perfect day" : ""}`}
               >
                 {day}
                 {perfect && (
-                  <span className="material-symbols-outlined is-filled absolute -top-1.5 -right-1.5 text-[13px] text-amber-500">
+                  <span
+                    className="material-symbols-outlined is-filled absolute -right-1 -top-1 text-[13px]"
+                    style={{ color: "var(--s-tertiary-container)" }}
+                  >
                     star
                   </span>
                 )}
@@ -148,60 +161,141 @@ export function SalahHistory({ logs, onSetStatus }: Props) {
             );
           })}
         </div>
-        {/* Legend */}
-        <div className="mt-6 flex items-center justify-end gap-2">
-          <span className="text-[10px] font-bold tracking-widest text-gray-500 uppercase">
-            None
-          </span>
-          <div className="flex gap-1">
-            {INTENSITY.map((cls, i) => (
-              <div key={i} className={`h-3 w-3 rounded-sm border ${cls}`} />
-            ))}
-          </div>
-          <span className="text-[10px] font-bold tracking-widest text-gray-500 uppercase">
-            All 5
-          </span>
-        </div>
       </div>
 
-      {/* Day detail */}
+      {/* Daily Log */}
       {selectedDay && (
-        <div className="animate-app-in rounded-3xl border border-primary/20 bg-surface-glass p-5 backdrop-blur-2xl">
-          <div className="mb-4 flex items-center justify-between">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-end justify-between">
             <div>
-              <h3 className="text-lg font-bold text-on-surface">
+              <h3 className="font-headline text-xl" style={{ color: "var(--s-primary)" }}>
                 {new Date(selectedDay + "T00:00:00").toLocaleDateString("en-US", {
                   weekday: "long",
                   month: "long",
                   day: "numeric"
                 })}
               </h3>
-              <p className="text-[11px] font-extrabold tracking-widest text-primary uppercase">
-                {prayedCount(selectedEntry)}/5 prayers completed
+              <p className="text-sm" style={{ color: "var(--s-on-surface-variant)" }}>
+                {selectedCount} of {PRAYERS.length} prayers completed
               </p>
             </div>
+            <div className="relative h-12 w-12 flex-none">
+              <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="16"
+                  fill="none"
+                  stroke="var(--s-surface-container)"
+                  strokeWidth="3"
+                />
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="16"
+                  fill="none"
+                  stroke="var(--s-primary)"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={circumference * (1 - selectedPct / 100)}
+                  className="transition-all duration-700"
+                />
+              </svg>
+            </div>
           </div>
-          <div className="space-y-2">
+
+          <div className="flex flex-col gap-3">
             {PRAYERS.map((p) => {
               const meta = PRAYER_META[p];
               const status = selectedEntry?.[p];
+              const isLogged = status === "on_time" || status === "qada";
+              const isMissed = status === "missed";
+
+              const stripeColor = isLogged
+                ? status === "qada"
+                  ? "var(--s-tertiary)"
+                  : "var(--s-primary)"
+                : isMissed
+                  ? "var(--s-error)"
+                  : "var(--s-outline-variant)";
+
               return (
                 <div
                   key={p}
-                  className="flex items-center justify-between rounded-xl border border-white/5 bg-white/5 p-3"
+                  className="relative flex items-center justify-between overflow-hidden rounded-xl p-4 shadow-sm"
+                  style={{ background: "var(--s-surface-container)" }}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className={`material-symbols-outlined ${meta.color}`}>{meta.icon}</span>
-                    <span className="text-sm font-bold text-on-surface">{PRAYER_LABELS[p]}</span>
+                  <div
+                    className="absolute bottom-0 left-0 top-0 w-1 rounded-l-xl"
+                    style={{ background: stripeColor }}
+                  />
+                  <div className="flex items-center gap-4 pl-2">
+                    <div
+                      className="flex h-10 w-10 items-center justify-center rounded-full"
+                      style={{
+                        background: isLogged
+                          ? status === "qada"
+                            ? "var(--s-tertiary-container)"
+                            : "var(--s-primary-container)"
+                          : isMissed
+                            ? "var(--s-error-container)"
+                            : "var(--s-surface-container-highest)"
+                      }}
+                    >
+                      <span
+                        className="material-symbols-outlined text-[20px]"
+                        style={{
+                          color: isLogged
+                            ? status === "qada"
+                              ? "var(--s-on-tertiary-container)"
+                              : "var(--s-on-primary-container)"
+                            : isMissed
+                              ? "var(--s-on-error-container)"
+                              : "var(--s-on-surface-variant)"
+                        }}
+                      >
+                        {isLogged ? "check_circle" : isMissed ? "cancel" : meta.icon}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-base font-semibold" style={{ color: "var(--s-on-surface)" }}>
+                          {PRAYER_LABELS[p]}
+                        </h4>
+                        {status === "qada" && (
+                          <span
+                            className="rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                            style={{ background: "color-mix(in srgb, var(--s-tertiary) 10%, transparent)", color: "var(--s-tertiary)" }}
+                          >
+                            Qada
+                          </span>
+                        )}
+                      </div>
+                      {!status && (
+                        <p className="text-xs" style={{ color: "var(--s-on-surface-variant)" }}>
+                          Not logged
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-1 rounded-full border border-white/10 bg-black/20 p-0.5">
+                  <div
+                    className="grid grid-cols-3 gap-1 rounded-full p-0.5"
+                    style={{ background: "var(--s-surface-container-high)" }}
+                  >
                     {STATUSES.map((s) => (
                       <button
                         key={s.id}
-                        className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold tracking-wide uppercase transition-colors duration-200 ${statusBtnClasses(
-                          s.id,
+                        className="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide transition-colors"
+                        style={
                           status === s.id
-                        )}`}
+                            ? s.id === "missed"
+                              ? { background: "var(--s-error-container)", color: "var(--s-on-error-container)" }
+                              : s.id === "qada"
+                                ? { background: "var(--s-tertiary-container)", color: "var(--s-on-tertiary-container)" }
+                                : { background: "var(--s-primary)", color: "var(--s-on-primary)" }
+                            : { color: "var(--s-on-surface-variant)" }
+                        }
                         onClick={() => selectedDay && onSetStatus(selectedDay, p, s.id)}
                         aria-pressed={status === s.id}
                       >
@@ -213,9 +307,6 @@ export function SalahHistory({ logs, onSetStatus }: Props) {
               );
             })}
           </div>
-          <p className="mt-3 text-center text-xs text-on-surface-dim">
-            Tap a status to log or update this day.
-          </p>
         </div>
       )}
     </section>

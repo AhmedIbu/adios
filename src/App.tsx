@@ -303,34 +303,7 @@ export default function App() {
   if (app === "salah") {
     return (
       <div className="salah-app">
-        <div
-          className="mesh-gradient mx-auto min-h-dvh max-w-xl"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6rem)" }}
-        >
-          <header
-            className="sticky top-0 z-30 flex items-center justify-between border-b border-white/5 bg-bg/60 px-4 backdrop-blur-md"
-            style={{
-              paddingTop: "env(safe-area-inset-top, 0px)",
-              height: "calc(3.5rem + env(safe-area-inset-top, 0px))"
-            }}
-          >
-            <button
-              className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 text-on-surface-dim transition-colors duration-200 hover:text-primary active:scale-90"
-              onClick={() => setApp("picker")}
-              aria-label="Switch app"
-              title="Switch app"
-            >
-              <span className="material-symbols-outlined text-xl">apps</span>
-            </button>
-            <h1 className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-lg font-extrabold tracking-tight text-transparent">
-              Salah
-            </h1>
-            <div className="h-9 w-9" />
-          </header>
-          <main className="animate-app-in px-4 pt-4">
-            <SalahView />
-          </main>
-        </div>
+        <SalahView onSwitchApp={() => setApp("picker")} />
         <Player
           lifted
           state={state}

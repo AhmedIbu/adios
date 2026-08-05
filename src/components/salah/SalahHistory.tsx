@@ -35,14 +35,14 @@ function statusBtnClasses(status: PrayerStatus, active: boolean): string {
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-// Index = number of prayed prayers that day (0–5).
+// Index = number of prayed prayers that day (0–5). Red (none) -> orange (some) -> green (all 5).
 const INTENSITY = [
-  "bg-white/5 border-white/5 text-on-surface-dim/60",
-  "bg-primary/15 border-primary/10 text-on-surface-dim",
-  "bg-primary/30 border-primary/20 text-on-surface",
-  "bg-primary/50 border-primary/30 text-on-surface",
-  "bg-primary/75 border-primary/40 text-on-primary",
-  "bg-primary border-primary text-on-primary shadow-[0_0_10px_rgba(154,204,243,0.4)]"
+  "bg-red-500 border-red-600 text-white",
+  "bg-orange-500 border-orange-600 text-white",
+  "bg-amber-500 border-amber-600 text-white",
+  "bg-yellow-500 border-yellow-600 text-black",
+  "bg-lime-500 border-lime-600 text-black",
+  "bg-green-500 border-green-600 text-white"
 ];
 
 function hijriLabel(d: Date): string | null {
@@ -106,14 +106,11 @@ export function SalahHistory({ logs, onSetStatus }: Props) {
         </button>
       </div>
 
-      {/* Heatmap */}
-      <div className="rounded-3xl border border-white/8 bg-surface-glass p-5 backdrop-blur-2xl">
+      {/* Heatmap — deliberately a plain white card so the red-to-green gradient reads clearly. */}
+      <div className="rounded-3xl border border-black/5 bg-white p-5 shadow-lg">
         <div className="mb-3 grid grid-cols-7 gap-2 text-center">
           {WEEKDAYS.map((w) => (
-            <span
-              key={w}
-              className="text-[9px] font-bold tracking-widest text-on-surface-dim uppercase"
-            >
+            <span key={w} className="text-[9px] font-bold tracking-widest text-gray-500 uppercase">
               {w}
             </span>
           ))}
@@ -133,9 +130,9 @@ export function SalahHistory({ logs, onSetStatus }: Props) {
               <button
                 key={dayStr}
                 className={`relative flex aspect-square items-center justify-center rounded-lg border text-[11px] font-bold transition-all duration-200 active:scale-90 ${
-                  isFuture ? "border-transparent text-on-surface-dim/20" : INTENSITY[count]
-                } ${selected ? "ring-2 ring-primary" : ""} ${
-                  perfect ? "ring-2 ring-tertiary ring-offset-1 ring-offset-surface" : ""
+                  isFuture ? "border-gray-100 text-gray-300" : INTENSITY[count]
+                } ${selected ? "ring-2 ring-blue-600" : ""} ${
+                  perfect ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-white" : ""
                 }`}
                 onClick={() => !isFuture && setSelectedDay(selected ? null : dayStr)}
                 disabled={isFuture}
@@ -143,7 +140,7 @@ export function SalahHistory({ logs, onSetStatus }: Props) {
               >
                 {day}
                 {perfect && (
-                  <span className="material-symbols-outlined is-filled absolute -top-1.5 -right-1.5 text-[13px] text-tertiary">
+                  <span className="material-symbols-outlined is-filled absolute -top-1.5 -right-1.5 text-[13px] text-amber-500">
                     star
                   </span>
                 )}
@@ -153,16 +150,16 @@ export function SalahHistory({ logs, onSetStatus }: Props) {
         </div>
         {/* Legend */}
         <div className="mt-6 flex items-center justify-end gap-2">
-          <span className="text-[10px] font-bold tracking-widest text-on-surface-dim uppercase">
-            Less
+          <span className="text-[10px] font-bold tracking-widest text-gray-500 uppercase">
+            None
           </span>
           <div className="flex gap-1">
             {INTENSITY.map((cls, i) => (
               <div key={i} className={`h-3 w-3 rounded-sm border ${cls}`} />
             ))}
           </div>
-          <span className="text-[10px] font-bold tracking-widest text-on-surface-dim uppercase">
-            More
+          <span className="text-[10px] font-bold tracking-widest text-gray-500 uppercase">
+            All 5
           </span>
         </div>
       </div>

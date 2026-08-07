@@ -36,9 +36,14 @@ import { AppPicker } from "./components/AppPicker";
 type Theme = "dark" | "light";
 type AppChoice = "picker" | "adios" | "salah";
 
+// Set at build time (per Vite mode/env file) so a "salah"-only build boots
+// straight into SalahView and never shows the picker or Adios at all —
+// used for the family APK, which should only ever be the Salah tracker.
+const DEFAULT_APP = (import.meta.env.VITE_DEFAULT_APP as AppChoice | undefined) ?? "picker";
+
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
-  const [app, setApp] = useState<AppChoice>("picker");
+  const [app, setApp] = useState<AppChoice>(DEFAULT_APP);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [folders, setFolders] = useState<FolderRow[]>([]);
   const [offline, setOffline] = useState<Set<string>>(new Set());
@@ -304,7 +309,7 @@ export default function App() {
     return (
       <div className="salah-app">
         <SalahView
-          onSwitchApp={() => setApp("picker")}
+          onSwitchApp={DEFAULT_APP === "picker" ? () => setApp("picker") : undefined}
           theme={theme}
           onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
         />

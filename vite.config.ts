@@ -3,7 +3,9 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const isSalah = mode === "salah";
+  return {
   plugins: [
     react(),
     tailwindcss(),
@@ -11,13 +13,15 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["icons/icon-192.png", "icons/icon-512.png"],
       manifest: {
-        name: "Adios",
-        short_name: "Adios",
-        description: "Personal audio library — upload anywhere, listen anywhere.",
+        name: isSalah ? "Salah Tracker" : "Adios",
+        short_name: isSalah ? "Salah" : "Adios",
+        description: isSalah
+          ? "Prayer, qada, and reflection tracker."
+          : "Personal audio library — upload anywhere, listen anywhere.",
         display: "standalone",
         orientation: "portrait",
-        background_color: "#12151a",
-        theme_color: "#12151a",
+        background_color: isSalah ? "#121412" : "#12151a",
+        theme_color: isSalah ? "#121412" : "#12151a",
         start_url: "/",
         icons: [
           { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
@@ -37,4 +41,5 @@ export default defineConfig({
       }
     })
   ]
+  };
 });

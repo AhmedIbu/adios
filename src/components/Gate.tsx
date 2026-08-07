@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
 
+const IS_SALAH = import.meta.env.VITE_DEFAULT_APP === "salah";
+
 /**
  * Shown exactly once per device. After a successful sign-in the session
  * persists and auto-refreshes, so you land straight in your library forever.
@@ -20,7 +22,9 @@ export function Gate() {
   }
 
   return (
-    <main className="relative flex min-h-dvh items-center justify-center overflow-hidden p-6">
+    <main
+      className={`relative flex min-h-dvh items-center justify-center overflow-hidden p-6 ${IS_SALAH ? "salah-app" : ""}`}
+    >
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <div className="absolute -top-[10%] -left-[10%] h-[50%] w-[50%] rounded-full bg-primary/10 blur-[120px]" />
         <div className="absolute top-[40%] -right-[10%] h-[60%] w-[60%] rounded-full bg-secondary/10 blur-[120px]" />
@@ -30,16 +34,18 @@ export function Gate() {
         <div className="mb-8 flex flex-col items-center">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-container shadow-lg shadow-black/20">
             <span className="text-4xl" aria-hidden="true">
-              🎧
+              {IS_SALAH ? "🕌" : "🎧"}
             </span>
           </div>
-          <h1 className="text-xl font-extrabold tracking-tight text-on-surface">Adios</h1>
+          <h1 className="text-xl font-extrabold tracking-tight text-on-surface">
+            {IS_SALAH ? "Salah Tracker" : "Adios"}
+          </h1>
         </div>
 
         <div className="rounded-xl border border-white/5 bg-surface-glass p-8 shadow-2xl shadow-black/50 backdrop-blur-2xl">
           <header className="mb-8 text-center">
             <h2 className="mb-2 text-2xl font-semibold text-on-surface">Welcome back</h2>
-            <p className="text-on-surface-dim">One-time unlock for this device.</p>
+            <p className="text-on-surface-dim">Sign in with the account made for you.</p>
           </header>
 
           <form

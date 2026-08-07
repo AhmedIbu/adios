@@ -44,7 +44,8 @@ const TABS: { id: Tab; label: string; icon: string; title: string }[] = [
 ];
 
 interface Props {
-  onSwitchApp: () => void;
+  /** Omitted entirely on a Salah-only build (the family APK) — no app to switch to. */
+  onSwitchApp?: () => void;
   theme: "dark" | "light";
   onToggleTheme: () => void;
 }
@@ -204,15 +205,19 @@ export function SalahView({ onSwitchApp, theme, onToggleTheme }: Props) {
         }}
       >
         <div className="flex h-16 items-center justify-between px-5">
-          <button
-            className="flex h-11 w-11 items-center justify-center rounded-full transition-colors active:scale-90"
-            style={{ color: "var(--s-on-surface)" }}
-            onClick={onSwitchApp}
-            aria-label="Switch app"
-            title="Switch app"
-          >
-            <span className="material-symbols-outlined text-2xl">apps</span>
-          </button>
+          {onSwitchApp ? (
+            <button
+              className="flex h-11 w-11 items-center justify-center rounded-full transition-colors active:scale-90"
+              style={{ color: "var(--s-on-surface)" }}
+              onClick={onSwitchApp}
+              aria-label="Switch app"
+              title="Switch app"
+            >
+              <span className="material-symbols-outlined text-2xl">apps</span>
+            </button>
+          ) : (
+            <div className="h-11 w-11" />
+          )}
           <h1
             className="font-headline text-2xl tracking-tight"
             style={{ color: "var(--s-primary)" }}

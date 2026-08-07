@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Prayer, PrayerLog, QadaLog } from "../../lib/salah";
 import { PRAYERS, PRAYER_LABELS, qadaBacklog, qadaOwed } from "../../lib/salah";
 import { PRAYER_META } from "./meta";
@@ -10,6 +10,13 @@ interface Props {
 }
 
 export function SalahQada({ logs, qadaLogs, onLogQada }: Props) {
+  const [confirming, setConfirming] = useState(false);
+
+  function handleLog(p: Prayer) {
+    onLogQada(p);
+    setConfirming(true);
+  }
+
   const owed = useMemo(() => qadaOwed(logs, qadaLogs), [logs, qadaLogs]);
   const totalOwed = PRAYERS.reduce((sum, p) => sum + owed[p], 0);
   const totalEverMissed = useMemo(
@@ -94,7 +101,7 @@ export function SalahQada({ logs, qadaLogs, onLogQada }: Props) {
                 <button
                   className="flex h-14 w-14 flex-none items-center justify-center rounded-full shadow-md transition-transform active:scale-95 disabled:opacity-40"
                   style={{ background: "var(--s-primary)", color: "var(--s-on-primary)" }}
-                  onClick={() => onLogQada(p)}
+                  onClick={() => handleLog(p)}
                   disabled={owed[p] === 0}
                   aria-label={`Log a ${PRAYER_LABELS[p]} qada`}
                 >
@@ -193,6 +200,46 @@ export function SalahQada({ logs, qadaLogs, onLogQada }: Props) {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation modal, shown right after logging a make-up. */}
+      {confirming && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-5"
+          onClick={() => setConfirming(false)}
+        >
+          <div
+            className="absolute inset-0"
+            style={{ background: "color-mix(in srgb, var(--s-surface-dim) 80%, transparent)" }}
+          />
+          <div
+            className="relative flex w-full max-w-sm flex-col items-center gap-4 rounded-2xl p-6 text-center shadow-xl"
+            style={{ background: "var(--s-surface-container-high)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              className="mb-1 flex h-16 w-16 items-center justify-center rounded-full"
+              style={{ background: "color-mix(in srgb, var(--s-primary-container) 20%, transparent)", color: "var(--s-primary)" }}
+            >
+              <span className="material-symbols-outlined text-[32px]">check_circle</span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <h3 className="font-headline text-xl" style={{ color: "var(--s-on-surface)" }}>
+                Prayer Logged
+              </h3>
+              <p className="text-sm" style={{ color: "var(--s-on-surface-variant)" }}>
+                Your make-up count has been successfully updated.
+              </p>
+            </div>
+            <button
+              className="w-full rounded-lg py-3 text-sm font-bold transition-transform active:scale-95"
+              style={{ background: "var(--s-primary)", color: "var(--s-on-primary)" }}
+              onClick={() => setConfirming(false)}
+            >
+              OK
+            </button>
           </div>
         </div>
       )}

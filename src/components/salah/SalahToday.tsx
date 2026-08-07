@@ -10,9 +10,10 @@ import {
   weekComparison
 } from "../../lib/salah";
 import { computeDayTimes, hasLocation } from "../../lib/prayertimes";
-import type { Intention } from "../../lib/journal";
+import type { AnsweredDua, Intention, Reflection } from "../../lib/journal";
 import { PRAYER_META } from "./meta";
 import { SalahBreathing } from "./SalahBreathing";
+import { SalahReminder } from "./SalahReminder";
 
 interface Props {
   logs: PrayerLog[];
@@ -24,6 +25,11 @@ interface Props {
   onSaveIntentionText: (day: string, prayer: Prayer, text: string) => void;
   onSaveIntentionAudio: (day: string, prayer: Prayer, blob: Blob) => void;
   onGetIntentionAudioUrl: (path: string) => Promise<string>;
+  reflections: Reflection[];
+  onSaveReflection: (day: string, prompt: string, text: string) => Promise<void>;
+  duas: AnsweredDua[];
+  onAddDua: (text: string) => Promise<void>;
+  onMarkDuaAnswered: (id: string) => Promise<void>;
 }
 
 function IntentionRow({
@@ -76,22 +82,20 @@ function IntentionRow({
   );
 }
 
-const STATUSES: { id: PrayerStatus; label: string; icon: string }[] = [
-  { id: "on_time", label: "On Time", icon: "check_circle" },
-  { id: "qada", label: "Qada", icon: "history" },
-  { id: "missed", label: "Missed", icon: "close" }
-];
-
 export function SalahToday({
   logs,
   onSetStatus,
   onClearStatus,
-  onSetSunnah,
   settings,
   intentions,
   onSaveIntentionText,
   onSaveIntentionAudio,
-  onGetIntentionAudioUrl
+  onGetIntentionAudioUrl,
+  reflections,
+  onSaveReflection,
+  duas,
+  onAddDua,
+  onMarkDuaAnswered
 }: Props) {
   const todayStr = toDayString(new Date());
   const map = useMemo(() => buildLogMap(logs), [logs]);
@@ -283,127 +287,14 @@ export function SalahToday({
         </div>
       )}
 
-      {/* Today's Log */}
-      <div className="flex flex-col gap-3">
-        <h3 className="px-1 font-headline text-2xl" style={{ color: "var(--s-on-surface)" }}>
-          Today's Log
-        </h3>
-        {PRAYERS.map((p) => {
-          const meta = PRAYER_META[p];
-          const status = dayEntry?.[p];
-          const isLogged = status === "on_time" || status === "qada";
-          const isMissed = status === "missed";
-          const log = logs.find((l) => l.day === todayStr && l.prayer === p);
-          return (
-            <div
-              key={p}
-              className="flex flex-col gap-3 rounded-2xl p-4 shadow-sm"
-              style={{ background: "var(--s-surface-container-lowest)", border: "1px solid var(--s-surface-container)" }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="flex h-10 w-10 items-center justify-center rounded-full"
-                    style={{
-                      background: isLogged ? "var(--s-primary-container)" : "var(--s-surface-variant)"
-                    }}
-                  >
-                    <span
-                      className="material-symbols-outlined text-[20px]"
-                      style={{ color: isLogged ? "var(--s-on-primary-container)" : "var(--s-on-surface-variant)" }}
-                    >
-                      {meta.icon}
-                    </span>
-                  </div>
-                  <div>
-                    <h4 className="text-base font-semibold" style={{ color: "var(--s-on-surface)" }}>
-                      {PRAYER_LABELS[p]}
-                    </h4>
-                    {todayTimes && (
-                      <p className="text-xs" style={{ color: "var(--s-on-surface-variant)" }}>
-                        {todayTimes[p].toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                {isLogged && (
-                  <div
-                    className="flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold"
-                    style={{
-                      background: status === "qada" ? "var(--s-tertiary-container)" : "var(--s-primary-fixed)",
-                      color: status === "qada" ? "var(--s-on-tertiary-container)" : "var(--s-on-primary-fixed)"
-                    }}
-                  >
-                    <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                    {status === "qada" ? "Qada" : "Logged"}
-                  </div>
-                )}
-                {isMissed && (
-                  <div
-                    className="rounded-full px-3 py-1 text-[11px] font-bold"
-                    style={{ background: "var(--s-error-container)", color: "var(--s-on-error-container)" }}
-                  >
-                    Missed
-                  </div>
-                )}
-                {!status && p !== nextPrayer && (
-                  <span className="text-[11px]" style={{ color: "var(--s-on-surface-variant)" }}>
-                    Upcoming
-                  </span>
-                )}
-              </div>
-
-              {/* Quick status switcher — always available so a logged prayer can be corrected. */}
-              <div
-                className="grid grid-cols-3 gap-1 rounded-full p-1"
-                style={{ background: "var(--s-surface-container-high)" }}
-              >
-                {STATUSES.map((s) => (
-                  <button
-                    key={s.id}
-                    className="rounded-full py-1.5 text-center text-[10px] font-bold uppercase tracking-wide transition-colors"
-                    style={
-                      status === s.id
-                        ? s.id === "missed"
-                          ? { background: "var(--s-error-container)", color: "var(--s-on-error-container)" }
-                          : s.id === "qada"
-                            ? { background: "var(--s-tertiary-container)", color: "var(--s-on-tertiary-container)" }
-                            : { background: "var(--s-primary)", color: "var(--s-on-primary)" }
-                        : { color: "var(--s-on-surface-variant)" }
-                    }
-                    onClick={() => handleSetStatus(p, s.id)}
-                    aria-pressed={status === s.id}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-
-              {isLogged && log && (
-                <button
-                  className="flex items-center justify-between rounded-xl px-3 py-2 text-left"
-                  style={{ background: "var(--s-surface-container)" }}
-                  onClick={() => onSetSunnah(todayStr, p, !log.sunnah)}
-                >
-                  <span className="text-xs font-semibold" style={{ color: "var(--s-on-surface)" }}>
-                    Prayed with sunnah
-                  </span>
-                  <span
-                    className="flex h-5 w-9 flex-none items-center rounded-full p-0.5 transition-colors"
-                    style={{ background: log.sunnah ? "var(--s-primary)" : "var(--s-outline-variant)" }}
-                  >
-                    <span
-                      className={`h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                        log.sunnah ? "translate-x-4" : "translate-x-0"
-                      }`}
-                    />
-                  </span>
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      {/* Daily Reflection */}
+      <SalahReminder
+        reflections={reflections}
+        onSaveReflection={onSaveReflection}
+        duas={duas}
+        onAddDua={onAddDua}
+        onMarkDuaAnswered={onMarkDuaAnswered}
+      />
 
       {/* Tahajjud — optional bonus slot, never affects the 5-prayer streak. */}
       <div

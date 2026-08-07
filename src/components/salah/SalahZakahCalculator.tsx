@@ -65,7 +65,7 @@ export function SalahZakahCalculator() {
   const result = calculateZakah(input);
 
   return (
-    <div className="rounded-3xl border border-white/8 bg-surface-glass p-6 backdrop-blur-2xl">
+    <div>
       <h3 className="mb-1 text-lg font-bold text-on-surface">Zakah calculator</h3>
       <p className="mb-4 text-xs text-on-surface-dim">
         A simple estimate — cash, gold/silver, investments, minus short-term debts, times 2.5%.

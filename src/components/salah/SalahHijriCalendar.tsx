@@ -19,7 +19,7 @@ export function SalahHijriCalendar() {
   const offset = (start.getDay() + 6) % 7; // Monday-first
 
   return (
-    <div className="rounded-3xl border border-white/8 bg-surface-glass p-6 backdrop-blur-2xl">
+    <div>
       <div className="mb-4 flex items-center justify-between">
         <button
           className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-on-surface-dim transition-colors hover:text-primary active:scale-90"

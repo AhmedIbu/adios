@@ -1,21 +1,10 @@
 import { useState } from "react";
-import type { AnsweredDua, Reflection } from "../../lib/journal";
 import { dailyHadith, dailyQuote } from "../../lib/reminders";
 import { toDayString } from "../../lib/salah";
-import { SalahReminder } from "./SalahReminder";
 import { SalahDuaLibrary } from "./SalahDuaLibrary";
 import { SalahDuaQuiz } from "./SalahDuaQuiz";
 import { SalahSurahOfMonth } from "./SalahSurahOfMonth";
 
-interface Props {
-  reflections: Reflection[];
-  onSaveReflection: (day: string, prompt: string, text: string) => Promise<void>;
-  duas: AnsweredDua[];
-  onAddDua: (text: string) => Promise<void>;
-  onMarkDuaAnswered: (id: string) => Promise<void>;
-}
-
-type Mode = "explore" | "saved";
 type Sheet = "duas" | "quiz" | "surah" | null;
 
 function LearnSheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
@@ -52,8 +41,7 @@ function LearnSheet({ title, onClose, children }: { title: string; onClose: () =
   );
 }
 
-export function SalahLearn(props: Props) {
-  const [mode, setMode] = useState<Mode>("explore");
+export function SalahLearn() {
   const [sheet, setSheet] = useState<Sheet>(null);
   const todayStr = toDayString(new Date());
   const quote = dailyQuote(todayStr);
@@ -61,29 +49,7 @@ export function SalahLearn(props: Props) {
 
   return (
     <section>
-      <div className="mb-6 flex items-center">
-        <div className="flex items-center gap-2 rounded-full p-1" style={{ background: "var(--s-surface-container)" }}>
-          {(["explore", "saved"] as const).map((m) => (
-            <button
-              key={m}
-              className="rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
-              style={
-                mode === m
-                  ? { background: "var(--s-primary)", color: "var(--s-on-primary)" }
-                  : { color: "var(--s-on-surface-variant)" }
-              }
-              onClick={() => setMode(m)}
-            >
-              {m === "explore" ? "Explore" : "Saved"}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {mode === "saved" ? (
-        <SalahReminder {...props} />
-      ) : (
-        <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-8">
           {/* Daily Reflection carousel */}
           <div className="flex flex-col gap-3">
             <h2 className="px-1 font-headline text-xl" style={{ color: "var(--s-on-surface)" }}>
@@ -224,7 +190,6 @@ export function SalahLearn(props: Props) {
             </div>
           </div>
         </div>
-      )}
 
       {sheet === "duas" && (
         <LearnSheet title="Dua Library" onClose={() => setSheet(null)}>

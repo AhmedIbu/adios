@@ -5,7 +5,7 @@ export function SalahDuaLibrary() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   return (
-    <div className="rounded-3xl border border-white/8 bg-surface-glass p-6 backdrop-blur-2xl">
+    <div>
       <p className="mb-4 text-[11px] font-extrabold tracking-widest text-primary uppercase">
         Dua library
       </p>

@@ -39,7 +39,7 @@ const TABS: { id: Tab; label: string; icon: string; title: string }[] = [
   { id: "history", label: "History", icon: "calendar_month", title: "History" },
   { id: "qada", label: "Qada", icon: "history", title: "Qada" },
   { id: "stats", label: "Stats", icon: "bar_chart", title: "Stats" },
-  { id: "sins", label: "Sins", icon: "do_not_disturb_on", title: "Sins" },
+  { id: "sins", label: "Sins", icon: "heart_broken", title: "Sins" },
   { id: "more", label: "More", icon: "more_horiz", title: "More" }
 ];
 
@@ -265,9 +265,16 @@ export function SalahView({ onSwitchApp, theme, onToggleTheme }: Props) {
                   onSaveIntentionText={handleSaveIntentionText}
                   onSaveIntentionAudio={handleSaveIntentionAudio}
                   onGetIntentionAudioUrl={intentionAudioUrl}
+                  reflections={reflections}
+                  onSaveReflection={handleSaveReflection}
+                  duas={duas}
+                  onAddDua={handleAddDua}
+                  onMarkDuaAnswered={handleMarkDuaAnswered}
                 />
               )}
-              {tab === "history" && <SalahHistory logs={logs} onSetStatus={handleSetStatus} />}
+              {tab === "history" && (
+                <SalahHistory logs={logs} onSetStatus={handleSetStatus} onSetSunnah={handleSetSunnah} />
+              )}
               {tab === "qada" && (
                 <SalahQada logs={logs} qadaLogs={qadaLogs} onLogQada={handleLogQada} />
               )}
@@ -301,15 +308,7 @@ export function SalahView({ onSwitchApp, theme, onToggleTheme }: Props) {
                     </p>
                   }
                 >
-                  <SalahMore
-                    reflections={reflections}
-                    onSaveReflection={handleSaveReflection}
-                    duas={duas}
-                    onAddDua={handleAddDua}
-                    onMarkDuaAnswered={handleMarkDuaAnswered}
-                    settings={settings}
-                    onSaveSettings={handleSaveSettings}
-                  />
+                  <SalahMore settings={settings} onSaveSettings={handleSaveSettings} />
                 </Suspense>
               )}
             </>

@@ -30,24 +30,26 @@ export function SalahDuas({ duas, onAdd, onMarkAnswered }: Props) {
   }
 
   return (
-    <div className="rounded-3xl border border-white/8 bg-surface-glass p-6 backdrop-blur-2xl">
-      <p className="mb-1 text-[11px] font-extrabold tracking-widest text-primary uppercase">
+    <div className="rounded-2xl p-5 shadow-sm" style={{ background: "var(--s-surface-container)" }}>
+      <p className="mb-1 text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--s-primary)" }}>
         Duas
       </p>
-      <h3 className="mb-3 text-base font-bold text-on-surface">
+      <h3 className="mb-3 text-base font-semibold" style={{ color: "var(--s-on-surface)" }}>
         What are you asking Allah for?
       </h3>
 
       <div className="flex gap-2">
         <input
-          className="flex-1 rounded-xl border border-white/10 bg-surface-high px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-dim/50"
+          className="flex-1 rounded-xl px-3 py-2.5 text-sm focus:outline-none"
+          style={{ background: "var(--s-surface-container-lowest)", color: "var(--s-on-surface)" }}
           placeholder="Type a dua…"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
         />
         <button
-          className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-primary text-on-primary disabled:opacity-50"
+          className="flex h-10 w-10 flex-none items-center justify-center rounded-full disabled:opacity-50"
+          style={{ background: "var(--s-primary)", color: "var(--s-on-primary)" }}
           onClick={handleAdd}
           disabled={adding || !text.trim()}
           aria-label="Add dua"
@@ -57,15 +59,19 @@ export function SalahDuas({ duas, onAdd, onMarkAnswered }: Props) {
       </div>
 
       {pending.length > 0 && (
-        <div className="mt-4 space-y-2">
+        <div className="mt-4 flex flex-col gap-2">
           {pending.map((d) => (
             <div
               key={d.id}
-              className="flex items-center justify-between rounded-xl border border-white/5 bg-white/5 p-3"
+              className="flex items-center justify-between rounded-xl p-3"
+              style={{ background: "var(--s-surface-container-lowest)" }}
             >
-              <p className="text-sm text-on-surface">{d.text}</p>
+              <p className="text-sm" style={{ color: "var(--s-on-surface)" }}>
+                {d.text}
+              </p>
               <button
-                className="flex h-8 w-8 flex-none items-center justify-center rounded-full text-on-surface-dim transition-colors hover:text-primary active:scale-90"
+                className="flex h-8 w-8 flex-none items-center justify-center rounded-full transition-colors active:scale-90"
+                style={{ color: "var(--s-on-surface-variant)" }}
                 onClick={() => onMarkAnswered(d.id)}
                 aria-label="Mark as answered"
                 title="Mark as answered"
@@ -80,7 +86,8 @@ export function SalahDuas({ duas, onAdd, onMarkAnswered }: Props) {
       {answered.length > 0 && (
         <div className="mt-4">
           <button
-            className="flex w-full items-center justify-between text-xs font-bold tracking-widest text-on-surface-dim uppercase"
+            className="flex w-full items-center justify-between text-xs font-bold uppercase tracking-widest"
+            style={{ color: "var(--s-on-surface-variant)" }}
             onClick={() => setShowAnswered((v) => !v)}
           >
             <span>Answered ({answered.length})</span>
@@ -89,16 +96,19 @@ export function SalahDuas({ duas, onAdd, onMarkAnswered }: Props) {
             </span>
           </button>
           {showAnswered && (
-            <div className="mt-2 space-y-2">
+            <div className="mt-2 flex flex-col gap-2">
               {answered.map((d) => (
                 <div
                   key={d.id}
-                  className="flex items-center gap-2.5 rounded-xl border border-secondary-container/30 bg-secondary-container/10 p-3"
+                  className="flex items-center gap-2.5 rounded-xl p-3"
+                  style={{ background: "color-mix(in srgb, var(--s-secondary-container) 40%, transparent)" }}
                 >
-                  <span className="material-symbols-outlined is-filled text-lg text-secondary">
+                  <span className="material-symbols-outlined is-filled text-lg" style={{ color: "var(--s-secondary)" }}>
                     auto_awesome
                   </span>
-                  <p className="text-sm text-on-surface">{d.text}</p>
+                  <p className="text-sm" style={{ color: "var(--s-on-surface)" }}>
+                    {d.text}
+                  </p>
                 </div>
               ))}
             </div>

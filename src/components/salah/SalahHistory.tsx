@@ -13,6 +13,7 @@ import { PRAYER_META } from "./meta";
 interface Props {
   logs: PrayerLog[];
   onSetStatus: (day: string, prayer: Prayer, status: PrayerStatus) => void;
+  onSetSunnah: (day: string, prayer: Prayer, sunnah: boolean) => void;
 }
 
 const STATUSES: { id: PrayerStatus; label: string }[] = [
@@ -34,7 +35,7 @@ function hijriLabel(d: Date): string | null {
   }
 }
 
-export function SalahHistory({ logs, onSetStatus }: Props) {
+export function SalahHistory({ logs, onSetStatus, onSetSunnah }: Props) {
   const [month, setMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -168,6 +169,9 @@ export function SalahHistory({ logs, onSetStatus }: Props) {
         <div className="flex flex-col gap-4">
           <div className="flex items-end justify-between">
             <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--s-on-surface-variant)" }}>
+                {selectedDay === todayStr ? "Today's Log" : "Daily Log"}
+              </p>
               <h3 className="font-headline text-xl" style={{ color: "var(--s-primary)" }}>
                 {new Date(selectedDay + "T00:00:00").toLocaleDateString("en-US", {
                   weekday: "long",
@@ -211,6 +215,7 @@ export function SalahHistory({ logs, onSetStatus }: Props) {
               const status = selectedEntry?.[p];
               const isLogged = status === "on_time" || status === "qada";
               const isMissed = status === "missed";
+              const log = logs.find((l) => l.day === selectedDay && l.prayer === p);
 
               const stripeColor = isLogged
                 ? status === "qada"
@@ -223,13 +228,14 @@ export function SalahHistory({ logs, onSetStatus }: Props) {
               return (
                 <div
                   key={p}
-                  className="relative flex items-center justify-between overflow-hidden rounded-xl p-4 shadow-sm"
+                  className="relative flex flex-col gap-3 overflow-hidden rounded-xl p-4 shadow-sm"
                   style={{ background: "var(--s-surface-container)" }}
                 >
                   <div
                     className="absolute bottom-0 left-0 top-0 w-1 rounded-l-xl"
                     style={{ background: stripeColor }}
                   />
+                  <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4 pl-2">
                     <div
                       className="flex h-10 w-10 items-center justify-center rounded-full"
@@ -303,6 +309,29 @@ export function SalahHistory({ logs, onSetStatus }: Props) {
                       </button>
                     ))}
                   </div>
+                  </div>
+
+                  {isLogged && log && (
+                    <button
+                      className="flex items-center justify-between rounded-lg px-3 py-2 text-left"
+                      style={{ background: "var(--s-surface-container-high)" }}
+                      onClick={() => selectedDay && onSetSunnah(selectedDay, p, !log.sunnah)}
+                    >
+                      <span className="text-xs font-semibold" style={{ color: "var(--s-on-surface)" }}>
+                        Prayed with sunnah
+                      </span>
+                      <span
+                        className="flex h-5 w-9 flex-none items-center rounded-full p-0.5 transition-colors"
+                        style={{ background: log.sunnah ? "var(--s-primary)" : "var(--s-outline-variant)" }}
+                      >
+                        <span
+                          className={`h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                            log.sunnah ? "translate-x-4" : "translate-x-0"
+                          }`}
+                        />
+                      </span>
+                    </button>
+                  )}
                 </div>
               );
             })}

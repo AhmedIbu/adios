@@ -30,7 +30,7 @@ export function SalahSurahOfMonth() {
   }, [number]);
 
   return (
-    <div className="rounded-3xl border border-white/8 bg-surface-glass p-6 backdrop-blur-2xl">
+    <div>
       <p className="mb-1 text-[11px] font-extrabold tracking-widest text-secondary uppercase">
         Surah of the month
       </p>

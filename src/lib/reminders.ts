@@ -186,6 +186,11 @@ export function dailyHadith(dayString: string): Reminder {
   return HADITHS[(hashDay(dayString) + 13) % HADITHS.length];
 }
 
+/** Same quote for the whole calendar day, from the quote-only subset. */
+export function dailyQuote(dayString: string): Reminder {
+  return QUOTES[(hashDay(dayString) + 19) % QUOTES.length];
+}
+
 export function allHadiths(): Reminder[] {
   return HADITHS;
 }

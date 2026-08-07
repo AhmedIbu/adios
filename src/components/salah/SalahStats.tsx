@@ -139,10 +139,18 @@ export function SalahStats({ logs, qadaLogs }: Props) {
             This week
           </span>
         </div>
-        <div className="relative z-10 mt-4 flex h-48 items-end justify-between gap-2 px-1">
+        {/* Bars get their own definite-height row (items-stretch, the flex
+            default) so each column's flex-1 track has a real height for the
+            inner bar's percentage height to resolve against — with
+            items-end here instead, columns never stretch and every bar
+            silently collapses to 0px regardless of the day's data. */}
+        <div className="relative z-10 mt-4 flex h-40 justify-between gap-2 px-1">
           {week.map((d, i) => (
-            <div key={i} className="flex w-full flex-col items-center gap-2">
-              <div className="relative w-full flex-1 rounded-t-sm" style={{ background: "color-mix(in srgb, var(--s-primary) 20%, transparent)" }}>
+            <div key={i} className="flex flex-1 flex-col justify-end">
+              <div
+                className="relative w-full flex-1 self-stretch rounded-t-sm"
+                style={{ background: "color-mix(in srgb, var(--s-primary) 20%, transparent)" }}
+              >
                 <div
                   className="absolute bottom-0 w-full rounded-t-sm transition-all duration-700 ease-out"
                   style={{
@@ -152,31 +160,30 @@ export function SalahStats({ logs, qadaLogs }: Props) {
                   }}
                 />
               </div>
-              <span
-                className="text-[11px]"
-                style={{
-                  color: d.isToday ? "var(--s-primary)" : "var(--s-on-surface-variant)",
-                  fontWeight: d.isToday ? 700 : 400
-                }}
-              >
-                {d.label}
-              </span>
             </div>
           ))}
         </div>
-        <div className="relative z-10 mt-4 flex items-center gap-2 border-t pt-4" style={{ borderColor: "var(--s-surface-variant)" }}>
-          <span
-            className="material-symbols-outlined text-[20px]"
-            style={{ color: "var(--s-tertiary)" }}
-          >
-            {weekDeltaPct >= 0 ? "trending_up" : "trending_down"}
+        <div className="relative z-10 mt-2 flex justify-between gap-2 px-1">
+          {week.map((d, i) => (
+            <span
+              key={i}
+              className="flex-1 text-center text-[11px]"
+              style={{
+                color: d.isToday ? "var(--s-primary)" : "var(--s-on-surface-variant)",
+                fontWeight: d.isToday ? 700 : 400
+              }}
+            >
+              {d.label}
+            </span>
+          ))}
+        </div>
+        <div className="relative z-10 mt-4 flex items-center justify-between border-t pt-4" style={{ borderColor: "var(--s-surface-variant)" }}>
+          <span className="text-sm font-bold" style={{ color: "var(--s-on-surface)" }}>
+            {Math.round(weekAvg)}% On Time
           </span>
-          <p className="text-sm" style={{ color: "var(--s-on-surface-variant)" }}>
-            {weekDeltaPct === 0
-              ? "Same consistency as last week."
-              : `You are ${Math.abs(weekDeltaPct)}% ${weekDeltaPct > 0 ? "more" : "less"} consistent than last week.`}{" "}
-            May Allah reward your efforts.
-          </p>
+          <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--s-on-surface-variant)" }}>
+            Last 7 Days
+          </span>
         </div>
       </div>
 

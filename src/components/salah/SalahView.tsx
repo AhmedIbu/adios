@@ -270,11 +270,6 @@ export function SalahView({ onSwitchApp, theme, onToggleTheme }: Props) {
                   onSaveIntentionText={handleSaveIntentionText}
                   onSaveIntentionAudio={handleSaveIntentionAudio}
                   onGetIntentionAudioUrl={intentionAudioUrl}
-                  reflections={reflections}
-                  onSaveReflection={handleSaveReflection}
-                  duas={duas}
-                  onAddDua={handleAddDua}
-                  onMarkDuaAnswered={handleMarkDuaAnswered}
                 />
               )}
               {tab === "history" && (
@@ -313,7 +308,15 @@ export function SalahView({ onSwitchApp, theme, onToggleTheme }: Props) {
                     </p>
                   }
                 >
-                  <SalahMore settings={settings} onSaveSettings={handleSaveSettings} />
+                  <SalahMore
+                    reflections={reflections}
+                    onSaveReflection={handleSaveReflection}
+                    duas={duas}
+                    onAddDua={handleAddDua}
+                    onMarkDuaAnswered={handleMarkDuaAnswered}
+                    settings={settings}
+                    onSaveSettings={handleSaveSettings}
+                  />
                 </Suspense>
               )}
             </>

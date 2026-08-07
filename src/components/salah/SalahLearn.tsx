@@ -1,10 +1,19 @@
 import { useState } from "react";
-import { dailyHadith, dailyQuote } from "../../lib/reminders";
-import { toDayString } from "../../lib/salah";
+import type { AnsweredDua, Reflection } from "../../lib/journal";
 import { SalahDuaLibrary } from "./SalahDuaLibrary";
 import { SalahDuaQuiz } from "./SalahDuaQuiz";
 import { SalahSurahOfMonth } from "./SalahSurahOfMonth";
+import { SalahReminder } from "./SalahReminder";
 
+interface Props {
+  reflections: Reflection[];
+  onSaveReflection: (day: string, prompt: string, text: string) => Promise<void>;
+  duas: AnsweredDua[];
+  onAddDua: (text: string) => Promise<void>;
+  onMarkDuaAnswered: (id: string) => Promise<void>;
+}
+
+type Mode = "explore" | "saved";
 type Sheet = "duas" | "quiz" | "surah" | null;
 
 function LearnSheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
@@ -41,74 +50,35 @@ function LearnSheet({ title, onClose, children }: { title: string; onClose: () =
   );
 }
 
-export function SalahLearn() {
+export function SalahLearn(props: Props) {
+  const [mode, setMode] = useState<Mode>("explore");
   const [sheet, setSheet] = useState<Sheet>(null);
-  const todayStr = toDayString(new Date());
-  const quote = dailyQuote(todayStr);
-  const hadith = dailyHadith(todayStr);
 
   return (
     <section>
-      <div className="flex flex-col gap-8">
-          {/* Daily Reflection carousel */}
-          <div className="flex flex-col gap-3">
-            <h2 className="px-1 font-headline text-xl" style={{ color: "var(--s-on-surface)" }}>
-              Daily Reflection
-            </h2>
-            <div className="-mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-2">
-              <div
-                className="relative flex h-64 w-[85%] flex-none snap-center flex-col justify-end overflow-hidden rounded-xl p-6"
-                style={{ background: "linear-gradient(to bottom right, var(--s-primary-container), var(--s-surface-container))" }}
-              >
-                <span
-                  className="material-symbols-outlined pointer-events-none absolute -right-4 -top-4 text-[140px] opacity-10"
-                  style={{ color: "var(--s-primary)" }}
-                >
-                  format_quote
-                </span>
-                <div className="relative z-10 flex flex-col gap-2">
-                  <span
-                    className="text-[10px] font-bold uppercase tracking-widest"
-                    style={{ color: "var(--s-primary)" }}
-                  >
-                    Quote of the Day
-                  </span>
-                  <p className="text-lg italic leading-relaxed" style={{ color: "var(--s-on-surface)" }}>
-                    "{quote.text}"
-                  </p>
-                  <p className="text-sm" style={{ color: "var(--s-on-surface-variant)" }}>
-                    — {quote.source}
-                  </p>
-                </div>
-              </div>
-              <div
-                className="relative flex h-64 w-[85%] flex-none snap-center flex-col justify-end overflow-hidden rounded-xl p-6"
-                style={{ background: "linear-gradient(to bottom right, var(--s-secondary-container), var(--s-surface-container))" }}
-              >
-                <span
-                  className="material-symbols-outlined pointer-events-none absolute -right-4 -top-4 text-[140px] opacity-10"
-                  style={{ color: "var(--s-secondary)" }}
-                >
-                  auto_stories
-                </span>
-                <div className="relative z-10 flex flex-col gap-2">
-                  <span
-                    className="text-[10px] font-bold uppercase tracking-widest"
-                    style={{ color: "var(--s-on-secondary-container)" }}
-                  >
-                    Hadith of the Day
-                  </span>
-                  <p className="text-lg italic leading-relaxed" style={{ color: "var(--s-on-surface)" }}>
-                    "{hadith.text}"
-                  </p>
-                  <p className="text-sm" style={{ color: "var(--s-on-surface-variant)" }}>
-                    — {hadith.source}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+      <div className="mb-6 flex items-center">
+        <div className="flex items-center gap-2 rounded-full p-1" style={{ background: "var(--s-surface-container)" }}>
+          {(["explore", "saved"] as const).map((m) => (
+            <button
+              key={m}
+              className="rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
+              style={
+                mode === m
+                  ? { background: "var(--s-primary)", color: "var(--s-on-primary)" }
+                  : { color: "var(--s-on-surface-variant)" }
+              }
+              onClick={() => setMode(m)}
+            >
+              {m === "explore" ? "Explore" : "Saved"}
+            </button>
+          ))}
+        </div>
+      </div>
 
+      {mode === "saved" ? (
+        <SalahReminder {...props} />
+      ) : (
+        <div className="flex flex-col gap-8">
           {/* Learning */}
           <div className="flex flex-col gap-4">
             <h2 className="px-1 font-headline text-xl" style={{ color: "var(--s-on-surface)" }}>
@@ -190,6 +160,7 @@ export function SalahLearn() {
             </div>
           </div>
         </div>
+      )}
 
       {sheet === "duas" && (
         <LearnSheet title="Dua Library" onClose={() => setSheet(null)}>

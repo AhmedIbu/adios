@@ -10,10 +10,10 @@ import {
   weekComparison
 } from "../../lib/salah";
 import { computeDayTimes, hasLocation } from "../../lib/prayertimes";
-import type { AnsweredDua, Intention, Reflection } from "../../lib/journal";
+import type { Intention } from "../../lib/journal";
+import { dailyHadith, dailyQuote } from "../../lib/reminders";
 import { PRAYER_META } from "./meta";
 import { SalahBreathing } from "./SalahBreathing";
-import { SalahReminder } from "./SalahReminder";
 
 interface Props {
   logs: PrayerLog[];
@@ -25,11 +25,6 @@ interface Props {
   onSaveIntentionText: (day: string, prayer: Prayer, text: string) => void;
   onSaveIntentionAudio: (day: string, prayer: Prayer, blob: Blob) => void;
   onGetIntentionAudioUrl: (path: string) => Promise<string>;
-  reflections: Reflection[];
-  onSaveReflection: (day: string, prompt: string, text: string) => Promise<void>;
-  duas: AnsweredDua[];
-  onAddDua: (text: string) => Promise<void>;
-  onMarkDuaAnswered: (id: string) => Promise<void>;
 }
 
 function IntentionRow({
@@ -90,14 +85,11 @@ export function SalahToday({
   intentions,
   onSaveIntentionText,
   onSaveIntentionAudio,
-  onGetIntentionAudioUrl,
-  reflections,
-  onSaveReflection,
-  duas,
-  onAddDua,
-  onMarkDuaAnswered
+  onGetIntentionAudioUrl
 }: Props) {
   const todayStr = toDayString(new Date());
+  const quote = dailyQuote(todayStr);
+  const hadith = dailyHadith(todayStr);
   const map = useMemo(() => buildLogMap(logs), [logs]);
   const dayEntry = map.get(todayStr);
   const prayed = prayedCount(dayEntry);
@@ -288,13 +280,60 @@ export function SalahToday({
       )}
 
       {/* Daily Reflection */}
-      <SalahReminder
-        reflections={reflections}
-        onSaveReflection={onSaveReflection}
-        duas={duas}
-        onAddDua={onAddDua}
-        onMarkDuaAnswered={onMarkDuaAnswered}
-      />
+      <div className="flex flex-col gap-3">
+        <h3 className="px-1 font-headline text-2xl" style={{ color: "var(--s-on-surface)" }}>
+          Daily Reflection
+        </h3>
+        <div className="-mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-2">
+          <div
+            className="relative flex h-64 w-[85%] flex-none snap-center flex-col justify-end overflow-hidden rounded-xl p-6"
+            style={{ background: "linear-gradient(to bottom right, var(--s-primary-container), var(--s-surface-container))" }}
+          >
+            <span
+              className="material-symbols-outlined pointer-events-none absolute -right-4 -top-4 text-[140px] opacity-10"
+              style={{ color: "var(--s-primary)" }}
+            >
+              format_quote
+            </span>
+            <div className="relative z-10 flex flex-col gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--s-primary)" }}>
+                Quote of the Day
+              </span>
+              <p className="text-lg italic leading-relaxed" style={{ color: "var(--s-on-surface)" }}>
+                "{quote.text}"
+              </p>
+              <p className="text-sm" style={{ color: "var(--s-on-surface-variant)" }}>
+                — {quote.source}
+              </p>
+            </div>
+          </div>
+          <div
+            className="relative flex h-64 w-[85%] flex-none snap-center flex-col justify-end overflow-hidden rounded-xl p-6"
+            style={{ background: "linear-gradient(to bottom right, var(--s-secondary-container), var(--s-surface-container))" }}
+          >
+            <span
+              className="material-symbols-outlined pointer-events-none absolute -right-4 -top-4 text-[140px] opacity-10"
+              style={{ color: "var(--s-secondary)" }}
+            >
+              auto_stories
+            </span>
+            <div className="relative z-10 flex flex-col gap-2">
+              <span
+                className="text-[10px] font-bold uppercase tracking-widest"
+                style={{ color: "var(--s-on-secondary-container)" }}
+              >
+                Hadith of the Day
+              </span>
+              <p className="text-lg italic leading-relaxed" style={{ color: "var(--s-on-surface)" }}>
+                "{hadith.text}"
+              </p>
+              <p className="text-sm" style={{ color: "var(--s-on-surface-variant)" }}>
+                — {hadith.source}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Tahajjud — optional bonus slot, never affects the 5-prayer streak. */}
       <div

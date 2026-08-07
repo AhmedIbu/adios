@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { AnsweredDua, Reflection } from "../../lib/journal";
 import type { SalahSettingsRow } from "../../lib/salah";
 import { hasLocation } from "../../lib/prayertimes";
 import { SalahLearn } from "./SalahLearn";
@@ -8,6 +9,11 @@ import { SalahZakahCalculator } from "./SalahZakahCalculator";
 import { SalahPrayerTimeSettings } from "./SalahPrayerTimeSettings";
 
 interface Props {
+  reflections: Reflection[];
+  onSaveReflection: (day: string, prompt: string, text: string) => Promise<void>;
+  duas: AnsweredDua[];
+  onAddDua: (text: string) => Promise<void>;
+  onMarkDuaAnswered: (id: string) => Promise<void>;
   settings: SalahSettingsRow | null;
   onSaveSettings: (settings: SalahSettingsRow) => Promise<void>;
 }
@@ -48,12 +54,12 @@ function ToolSheet({ title, onClose, children }: { title: string; onClose: () =>
   );
 }
 
-export function SalahMore({ settings, onSaveSettings }: Props) {
+export function SalahMore({ settings, onSaveSettings, ...learnProps }: Props) {
   const [tool, setTool] = useState<Tool>(null);
 
   return (
     <section className="mx-auto flex max-w-md flex-col gap-8">
-      <SalahLearn />
+      <SalahLearn {...learnProps} />
 
       <div className="flex flex-col gap-4">
         <SalahIslamicEvents />

@@ -53,11 +53,9 @@
   --on-error: #ffffff;
 }
 
-/* Salah tracker: warm cream Material-3 palette instead of Adios's blue —
-   scoped to .salah-app so the audio library keeps its original colors.
-   A single fixed palette (not split by data-theme) since the redesign
-   mockups only specify this warm cream look, light or dark toggle aside. */
-:root[data-theme="dark"] .salah-app,
+/* Salah tracker: warm cream Material-3 palette (light) / "Midnight Devotion"
+   deep-charcoal palette (dark) instead of Adios's blue — scoped to
+   .salah-app so the audio library keeps its original colors and theme. */
 :root[data-theme="light"] .salah-app {
   --bg: #fbf9f4;
   --surface: #fbf9f4;
@@ -81,53 +79,7 @@
   --on-tertiary-container: #4f3e00;
   --error: #ba1a1a;
   --on-error: #ffffff;
-}
 
-.salah-app .mesh-gradient {
-  background-color: var(--bg);
-  background-image:
-    radial-gradient(at 0% 0%, #f5f3ee 0, transparent 50%),
-    radial-gradient(at 100% 0%, #eae8e3 0, transparent 50%),
-    radial-gradient(at 100% 100%, #f5f3ee 0, transparent 50%),
-    radial-gradient(at 0% 100%, #eae8e3 0, transparent 50%);
-}
-
-/* The pre-redesign components lean on alpha-white/black overlays that assume
-   a dark backdrop (bg-white/5, border-white/8, bg-black/20…). On the new
-   cream background those invert to dark-on-light overlays instead. */
-.salah-app .bg-white\/5,
-.salah-app .bg-white\/10,
-.salah-app .bg-white\/15,
-.salah-app .hover\:bg-white\/5:hover,
-.salah-app .hover\:bg-white\/10:hover {
-  background-color: rgb(22 52 34 / 0.05) !important;
-}
-.salah-app .bg-white\/20 {
-  background-color: rgb(22 52 34 / 0.12) !important;
-}
-.salah-app .border-white\/5,
-.salah-app .border-white\/8,
-.salah-app .border-white\/10,
-.salah-app .border-white\/15,
-.salah-app .border-white\/20 {
-  border-color: rgb(22 52 34 / 0.12) !important;
-}
-.salah-app .bg-black\/20 {
-  background-color: rgb(22 52 34 / 0.08) !important;
-}
-.salah-app .bg-black\/50 {
-  background-color: rgb(27 28 25 / 0.5) !important;
-}
-.salah-app .bg-surface {
-  background-color: #ffffff !important;
-}
-
-/* ============ Salah redesign: warm cream Material-3 token set ============ */
-/* A separate, prefixed token set (--s-*) so the new SalahView screens don't
-   collide with the shared --primary/--surface tokens still used by Player
-   and the rest of the app shell. Deliberately a single fixed palette (not
-   split by data-theme) since the mockups only specify this warm cream look. */
-.salah-app {
   --s-bg: #fbf9f4;
   --s-surface: #fbf9f4;
   --s-surface-dim: #dbdad5;
@@ -169,7 +121,78 @@
   --s-on-error: #ffffff;
   --s-error-container: #ffdad6;
   --s-on-error-container: #93000a;
+}
 
+/* "Midnight Devotion" — a near-black, desaturated-forest dark mode. */
+:root[data-theme="dark"] .salah-app {
+  --bg: #121412;
+  --surface: #121412;
+  --surface-glass: rgb(26 28 26 / 0.7);
+  --surface-high: #1e201e;
+  --on-surface: #e2e3df;
+  --on-surface-dim: #c2c8c1;
+  --outline: #8c928b;
+  --outline-dim: rgb(140 146 139 / 0.3);
+  --primary: #b2cdb6;
+  --on-primary: #1e3525;
+  --primary-container: #344c3a;
+  --on-primary-container: #cdead1;
+  --secondary: #d4c5a1;
+  --on-secondary: #383016;
+  --secondary-container: #50462a;
+  --on-secondary-container: #f1e1bc;
+  --tertiary: #c5c7c2;
+  --on-tertiary: #2e312e;
+  --tertiary-container: #454744;
+  --on-tertiary-container: #e1e3de;
+  --error: #ffb4ab;
+  --on-error: #690005;
+
+  --s-bg: #121412;
+  --s-surface: #121412;
+  --s-surface-dim: #121412;
+  --s-surface-bright: #383a37;
+  --s-surface-container-lowest: #0d0f0d;
+  --s-surface-container-low: #1a1c1a;
+  --s-surface-container: #1e201e;
+  --s-surface-container-high: #292a28;
+  --s-surface-container-highest: #333533;
+  --s-surface-variant: #333533;
+  --s-on-surface: #e2e3df;
+  --s-on-surface-variant: #c2c8c1;
+  --s-outline: #8c928b;
+  --s-outline-variant: #424843;
+  --s-primary: #b2cdb6;
+  --s-on-primary: #1e3525;
+  --s-primary-container: #88a38d;
+  --s-on-primary-container: #213928;
+  --s-primary-fixed: #cdead1;
+  --s-primary-fixed-dim: #b2cdb6;
+  --s-on-primary-fixed: #082011;
+  --s-on-primary-fixed-variant: #344c3a;
+  --s-secondary: #d4c5a1;
+  --s-on-secondary: #383016;
+  --s-secondary-container: #50462a;
+  --s-on-secondary-container: #c2b491;
+  --s-secondary-fixed: #f1e1bc;
+  --s-secondary-fixed-dim: #d4c5a1;
+  --s-on-secondary-fixed: #221b04;
+  --s-on-secondary-fixed-variant: #50462a;
+  --s-tertiary: #c5c7c2;
+  --s-on-tertiary: #2e312e;
+  --s-tertiary-container: #9b9d98;
+  --s-on-tertiary-container: #323531;
+  --s-tertiary-fixed: #e1e3de;
+  --s-tertiary-fixed-dim: #c5c7c2;
+  --s-on-tertiary-fixed: #191c19;
+  --s-on-tertiary-fixed-variant: #454744;
+  --s-error: #ffb4ab;
+  --s-on-error: #690005;
+  --s-error-container: #93000a;
+  --s-on-error-container: #ffdad6;
+}
+
+.salah-app {
   font-family: "Inter", var(--font-sans);
   background: var(--s-bg);
   color: var(--s-on-surface);
@@ -179,13 +202,59 @@
   font-family: "Libre Caslon Text", serif;
 }
 
-.salah-app .s-mesh {
+:root[data-theme="light"] .salah-app .mesh-gradient,
+:root[data-theme="light"] .salah-app .s-mesh {
   background-color: var(--s-bg);
   background-image:
     radial-gradient(at 0% 0%, #f5f3ee 0, transparent 50%),
-    radial-gradient(at 100% 0%, #e4e2dd 0, transparent 50%),
+    radial-gradient(at 100% 0%, #eae8e3 0, transparent 50%),
     radial-gradient(at 100% 100%, #f5f3ee 0, transparent 50%),
-    radial-gradient(at 0% 100%, #e4e2dd 0, transparent 50%);
+    radial-gradient(at 0% 100%, #eae8e3 0, transparent 50%);
+}
+
+:root[data-theme="dark"] .salah-app .mesh-gradient,
+:root[data-theme="dark"] .salah-app .s-mesh {
+  background-color: var(--s-bg);
+  background-image:
+    radial-gradient(at 0% 0%, rgb(178 205 182 / 0.06) 0, transparent 50%),
+    radial-gradient(at 100% 0%, rgb(212 197 161 / 0.05) 0, transparent 50%),
+    radial-gradient(at 100% 100%, rgb(178 205 182 / 0.04) 0, transparent 50%),
+    radial-gradient(at 0% 100%, rgb(30 32 30 / 0.5) 0, transparent 50%);
+}
+
+/* The pre-redesign components lean on alpha-white/black overlays that assume
+   a dark backdrop (bg-white/5, border-white/8, bg-black/20…). On the light
+   cream surface those invert to dark-on-light overlays; in dark mode the
+   original light-on-dark overlays already read correctly, so only light
+   theme needs remapping. */
+:root[data-theme="light"] .salah-app .bg-white\/5,
+:root[data-theme="light"] .salah-app .bg-white\/10,
+:root[data-theme="light"] .salah-app .bg-white\/15,
+:root[data-theme="light"] .salah-app .hover\:bg-white\/5:hover,
+:root[data-theme="light"] .salah-app .hover\:bg-white\/10:hover {
+  background-color: rgb(22 52 34 / 0.05) !important;
+}
+:root[data-theme="light"] .salah-app .bg-white\/20 {
+  background-color: rgb(22 52 34 / 0.12) !important;
+}
+:root[data-theme="light"] .salah-app .border-white\/5,
+:root[data-theme="light"] .salah-app .border-white\/8,
+:root[data-theme="light"] .salah-app .border-white\/10,
+:root[data-theme="light"] .salah-app .border-white\/15,
+:root[data-theme="light"] .salah-app .border-white\/20 {
+  border-color: rgb(22 52 34 / 0.12) !important;
+}
+:root[data-theme="light"] .salah-app .bg-black\/20 {
+  background-color: rgb(22 52 34 / 0.08) !important;
+}
+:root[data-theme="light"] .salah-app .bg-black\/50 {
+  background-color: rgb(27 28 25 / 0.5) !important;
+}
+:root[data-theme="light"] .salah-app .bg-surface {
+  background-color: #ffffff !important;
+}
+:root[data-theme="dark"] .salah-app .bg-surface {
+  background-color: var(--s-surface-container-lowest) !important;
 }
 
 @theme {

@@ -303,7 +303,11 @@ export default function App() {
   if (app === "salah") {
     return (
       <div className="salah-app">
-        <SalahView onSwitchApp={() => setApp("picker")} />
+        <SalahView
+          onSwitchApp={() => setApp("picker")}
+          theme={theme}
+          onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
+        />
         <Player
           lifted
           state={state}

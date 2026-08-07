@@ -45,9 +45,11 @@ const TABS: { id: Tab; label: string; icon: string; title: string }[] = [
 
 interface Props {
   onSwitchApp: () => void;
+  theme: "dark" | "light";
+  onToggleTheme: () => void;
 }
 
-export function SalahView({ onSwitchApp }: Props) {
+export function SalahView({ onSwitchApp, theme, onToggleTheme }: Props) {
   const [tab, setTab] = useState<Tab>("today");
   const [logs, setLogs] = useState<PrayerLog[]>([]);
   const [qadaLogs, setQadaLogs] = useState<QadaLog[]>([]);
@@ -217,14 +219,17 @@ export function SalahView({ onSwitchApp }: Props) {
           >
             {activeTitle}
           </h1>
-          <div
-            className="flex h-8 w-8 items-center justify-center rounded-full"
-            style={{ background: "var(--s-primary)" }}
+          <button
+            className="flex h-9 w-9 items-center justify-center rounded-full transition-colors active:scale-90"
+            style={{ color: "var(--s-on-surface)" }}
+            onClick={onToggleTheme}
+            aria-label="Toggle theme"
+            title="Toggle theme"
           >
-            <span className="material-symbols-outlined text-[18px]" style={{ color: "var(--s-on-primary)" }}>
-              person
+            <span className="material-symbols-outlined text-xl">
+              {theme === "dark" ? "light_mode" : "dark_mode"}
             </span>
-          </div>
+          </button>
         </div>
       </header>
 

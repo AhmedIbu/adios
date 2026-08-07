@@ -9,11 +9,10 @@ import {
   toDayString,
   weekComparison
 } from "../../lib/salah";
-import { computeDayTimes, deltaMinutes, formatDelta, hasLocation } from "../../lib/prayertimes";
+import { computeDayTimes, hasLocation } from "../../lib/prayertimes";
 import type { Intention } from "../../lib/journal";
 import { PRAYER_META } from "./meta";
 import { SalahBreathing } from "./SalahBreathing";
-import { SalahIntentionRecorder } from "./SalahIntentionRecorder";
 
 interface Props {
   logs: PrayerLog[];
@@ -101,14 +100,6 @@ export function SalahToday({
   const streak = useMemo(() => currentStreak(map, new Date()), [map]);
   const weekCmp = useMemo(() => weekComparison(map, new Date()), [map]);
   const [breathingOpen, setBreathingOpen] = useState(false);
-  const [sheet, setSheet] = useState<{ prayer: CorePrayer; status: "on_time" | "qada" } | null>(
-    null
-  );
-  const [sunnah, setSunnahVal] = useState(false);
-  const [intentionValue, setIntentionValue] = useState<{ text: string; audioBlob: Blob | null }>({
-    text: "",
-    audioBlob: null
-  });
 
   const todaysIntentions = useMemo(
     () => intentions.filter((i) => i.day === todayStr),
@@ -119,33 +110,12 @@ export function SalahToday({
     () => (hasLocation(settings) ? computeDayTimes(settings, new Date()) : null),
     [settings]
   );
-  const sheetDelta =
-    sheet && todayTimes ? deltaMinutes(todayTimes[sheet.prayer], new Date()) : null;
 
   const pct = (prayed / PRAYERS.length) * 100;
   const circumference = 2 * Math.PI * 40;
 
   function handleSetStatus(p: CorePrayer, status: PrayerStatus) {
-    if (status === "missed") {
-      onSetStatus(todayStr, p, status);
-      return;
-    }
-    // Prayed (on time/qada) — pause on a quick sheet to note sunnah / an intention.
-    setSunnahVal(false);
-    setIntentionValue({ text: "", audioBlob: null });
-    setSheet({ prayer: p, status });
-  }
-
-  function confirmSheet(applyExtras: boolean) {
-    if (!sheet) return;
-    onSetStatus(todayStr, sheet.prayer, sheet.status);
-    if (applyExtras && sunnah) onSetSunnah(todayStr, sheet.prayer, true);
-    if (applyExtras && intentionValue.text.trim()) {
-      onSaveIntentionText(todayStr, sheet.prayer, intentionValue.text.trim());
-    } else if (applyExtras && intentionValue.audioBlob) {
-      onSaveIntentionAudio(todayStr, sheet.prayer, intentionValue.audioBlob);
-    }
-    setSheet(null);
+    onSetStatus(todayStr, p, status);
   }
 
   function toggleTahajjud() {
@@ -323,6 +293,7 @@ export function SalahToday({
           const status = dayEntry?.[p];
           const isLogged = status === "on_time" || status === "qada";
           const isMissed = status === "missed";
+          const log = logs.find((l) => l.day === todayStr && l.prayer === p);
           return (
             <div
               key={p}
@@ -407,6 +378,28 @@ export function SalahToday({
                   </button>
                 ))}
               </div>
+
+              {isLogged && log && (
+                <button
+                  className="flex items-center justify-between rounded-xl px-3 py-2 text-left"
+                  style={{ background: "var(--s-surface-container)" }}
+                  onClick={() => onSetSunnah(todayStr, p, !log.sunnah)}
+                >
+                  <span className="text-xs font-semibold" style={{ color: "var(--s-on-surface)" }}>
+                    Prayed with sunnah
+                  </span>
+                  <span
+                    className="flex h-5 w-9 flex-none items-center rounded-full p-0.5 transition-colors"
+                    style={{ background: log.sunnah ? "var(--s-primary)" : "var(--s-outline-variant)" }}
+                  >
+                    <span
+                      className={`h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                        log.sunnah ? "translate-x-4" : "translate-x-0"
+                      }`}
+                    />
+                  </span>
+                </button>
+              )}
             </div>
           );
         })}
@@ -503,90 +496,6 @@ export function SalahToday({
         </div>
       )}
 
-      {/* Sunnah / intention quick sheet, shown after marking a prayer on time/qada. */}
-      {sheet && (
-        <div
-          className="fixed inset-0 z-[80] flex items-end bg-black/50 backdrop-blur-sm"
-          onClick={() => confirmSheet(false)}
-        >
-          <div
-            className="mx-auto w-full max-w-xl rounded-t-3xl pb-8 shadow-2xl"
-            style={{
-              paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)",
-              background: "var(--s-surface-container-lowest)"
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-center pt-3 pb-1">
-              <div className="h-1 w-10 rounded-full" style={{ background: "var(--s-outline-variant)" }} />
-            </div>
-            <h3
-              className="px-5 pt-2 pb-1 text-center text-base font-semibold"
-              style={{ color: "var(--s-on-surface)" }}
-            >
-              How was your {PRAYER_LABELS[sheet.prayer]}?
-            </h3>
-            <p className="px-5 pb-4 text-center text-xs" style={{ color: "var(--s-on-surface-variant)" }}>
-              Optional — note the sunnah or an intention.
-            </p>
-            {sheetDelta != null && (
-              <p className="px-5 pb-4 text-center text-xs font-semibold" style={{ color: "var(--s-primary)" }}>
-                {sheet && PRAYER_LABELS[sheet.prayer]} adhan was{" "}
-                {todayTimes &&
-                  sheet &&
-                  todayTimes[sheet.prayer].toLocaleTimeString("en-US", {
-                    hour: "numeric",
-                    minute: "2-digit"
-                  })}{" "}
-                — you're logging {formatDelta(sheetDelta)}
-              </p>
-            )}
-            <div className="px-6">
-              <button
-                className="flex w-full items-center justify-between rounded-2xl px-4 py-3"
-                style={{ background: "var(--s-surface-container)" }}
-                onClick={() => setSunnahVal((v) => !v)}
-              >
-                <span className="text-sm font-semibold" style={{ color: "var(--s-on-surface)" }}>
-                  I also prayed the sunnah
-                </span>
-                <span
-                  className="flex h-6 w-11 flex-none items-center rounded-full p-0.5 transition-colors"
-                  style={{ background: sunnah ? "var(--s-primary)" : "var(--s-outline-variant)" }}
-                >
-                  <span
-                    className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                      sunnah ? "translate-x-5" : "translate-x-0"
-                    }`}
-                  />
-                </span>
-              </button>
-
-              <SalahIntentionRecorder
-                key={`${sheet.prayer}-${sheet.status}`}
-                onChange={setIntentionValue}
-              />
-
-              <div className="mt-6 flex gap-3">
-                <button
-                  className="flex-1 rounded-full py-3 text-sm font-bold"
-                  style={{ border: "1px solid var(--s-outline-variant)", color: "var(--s-on-surface-variant)" }}
-                  onClick={() => confirmSheet(false)}
-                >
-                  Skip
-                </button>
-                <button
-                  className="flex-1 rounded-full py-3 text-sm font-bold"
-                  style={{ background: "var(--s-primary)", color: "var(--s-on-primary)" }}
-                  onClick={() => confirmSheet(true)}
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </section>
   );
 }

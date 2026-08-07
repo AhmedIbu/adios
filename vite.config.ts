@@ -10,7 +10,10 @@ export default defineConfig(({ mode }) => {
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: "autoUpdate",
+      // "prompt" (not autoUpdate) so a new deploy shows an in-app "Update
+      // available" banner instead of silently swapping the app underneath
+      // whoever's using it — see src/components/UpdatePrompt.tsx.
+      registerType: "prompt",
       includeAssets: ["icons/icon-192.png", "icons/icon-512.png"],
       manifest: {
         name: isSalah ? "Salah Tracker" : "Adios",

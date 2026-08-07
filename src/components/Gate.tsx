@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
+import { resolveDefaultApp } from "../lib/appMode";
 
-const IS_SALAH = import.meta.env.VITE_DEFAULT_APP === "salah";
+const IS_SALAH = resolveDefaultApp() === "salah";
 
 /**
  * Shown exactly once per device. After a successful sign-in the session

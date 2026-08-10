@@ -86,7 +86,6 @@ const OFFLINE_DURATIONS: { label: string; ms: number | null }[] = [
 
 interface FolderStyle {
   icon: string;
-  gradient: string;
   glow: string;
   iconColor: string;
   delay: string;
@@ -95,78 +94,53 @@ interface FolderStyle {
 const KNOWN_FOLDER_STYLE: Record<string, FolderStyle> = {
   music: {
     icon: "library_music",
-    gradient: "from-[#2e6385] to-[#00344d]",
-    glow: "shadow-[0_4px_20px_-5px_rgba(154,204,243,0.3)]",
+    glow: "bg-primary/20",
     iconColor: "text-primary",
     delay: "0s"
   },
   "beginning-to-the-end": {
     icon: "auto_stories",
-    gradient: "from-[#513c71] to-[#250f43]",
-    glow: "shadow-[0_4px_20px_-5px_rgba(213,187,249,0.3)]",
+    glow: "bg-secondary/20",
     iconColor: "text-secondary",
     delay: "0.2s"
   },
   "emotional-reminders": {
     icon: "favorite",
-    gradient: "from-[#7a3b56] to-[#3d1a2b]",
-    glow: "shadow-[0_4px_20px_-5px_rgba(240,150,180,0.3)]",
-    iconColor: "text-[#f0a8bf]",
+    glow: "bg-tertiary/20",
+    iconColor: "text-tertiary",
     delay: "0.4s"
   },
   "lessons-from-quran": {
     icon: "menu_book",
-    gradient: "from-[#2e6355] to-[#0f2e26]",
-    glow: "shadow-[0_4px_20px_-5px_rgba(120,210,180,0.3)]",
-    iconColor: "text-[#78d2b4]",
+    glow: "bg-primary/20",
+    iconColor: "text-primary",
     delay: "0.6s"
   },
   "motivational-reminders": {
     icon: "bolt",
-    gradient: "from-[#7a5a2e] to-[#3d2a0f]",
-    glow: "shadow-[0_4px_20px_-5px_rgba(253,201,127,0.3)]",
-    iconColor: "text-tertiary",
+    glow: "bg-secondary/20",
+    iconColor: "text-secondary",
     delay: "0.8s"
   },
   "powerful-reminders": {
     icon: "local_fire_department",
-    gradient: "from-[#7a2e2e] to-[#3d0f0f]",
-    glow: "shadow-[0_4px_20px_-5px_rgba(255,150,150,0.3)]",
-    iconColor: "text-[#ff9696]",
+    glow: "bg-tertiary/20",
+    iconColor: "text-tertiary",
     delay: "1s"
   },
   notes: {
     icon: "description",
-    gradient: "from-[#624000] to-[#291800]",
-    glow: "shadow-[0_4px_20px_-5px_rgba(241,190,117,0.3)]",
-    iconColor: "text-tertiary",
+    glow: "bg-secondary/20",
+    iconColor: "text-secondary",
     delay: "1.2s"
   }
 };
 
 /** New user-created folders cycle through this palette, picked deterministically by name. */
 const FALLBACK_STYLES: FolderStyle[] = [
-  {
-    icon: "folder",
-    gradient: "from-[#2e5f6a] to-[#0f2a30]",
-    glow: "shadow-[0_4px_20px_-5px_rgba(154,220,243,0.3)]",
-    iconColor: "text-[#9cdcf3]",
-    delay: "0s"
-  },
-  {
-    icon: "folder",
-    gradient: "from-[#5f6a2e] to-[#2a300f]",
-    glow: "shadow-[0_4px_20px_-5px_rgba(220,243,154,0.3)]",
-    iconColor: "text-[#dcf39c]",
-    delay: "0.3s"
-  },
-  {
-    icon: "folder",
-    gradient: "from-[#6a2e5f] to-[#300f2a]",
-    glow: "shadow-[0_4px_20px_-5px_rgba(243,154,220,0.3)]",
-    iconColor: "text-[#f39cdc]",
-    delay: "0.6s"
-  }
+  { icon: "folder", glow: "bg-primary/20", iconColor: "text-primary", delay: "0s" },
+  { icon: "folder", glow: "bg-secondary/20", iconColor: "text-secondary", delay: "0.3s" },
+  { icon: "folder", glow: "bg-tertiary/20", iconColor: "text-tertiary", delay: "0.6s" }
 ];
 
 function styleFor(name: string): FolderStyle {
@@ -332,7 +306,7 @@ export function Library({
     <section>
       {/* Folder quick-access grid */}
       <div className="mb-6">
-        <h2 className="mb-3 text-xl font-bold tracking-tight text-on-surface">Folders</h2>
+        <h2 className="font-headline mb-3 text-xl tracking-tight text-on-surface">Folders</h2>
         <div className="grid grid-cols-3 gap-3">
           {folders.map((folder) => {
             const f = folder.name;
@@ -343,7 +317,7 @@ export function Library({
             return (
               <button
                 key={folder.id}
-                className={`group relative flex aspect-square touch-none flex-col items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br transition-transform duration-150 ${style.gradient} ${style.glow} ${
+                className={`group relative flex aspect-square touch-none flex-col items-center justify-end overflow-hidden rounded-card bg-surface-container-high p-3 shadow-md ring-1 ring-white/5 transition-transform duration-150 ${
                   on ? "ring-2 ring-primary" : ""
                 } ${popped ? "animate-long-press-pop" : "active:scale-[0.97]"}`}
                 {...bindLongPress(
@@ -357,18 +331,19 @@ export function Library({
                 )}
               >
                 <div
-                  className="animate-float mb-1.5 flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/10 backdrop-blur-md"
+                  className={`animate-float pointer-events-none absolute -top-6 -right-6 h-20 w-20 rounded-full blur-[30px] ${style.glow}`}
                   style={{ animationDelay: style.delay }}
-                >
-                  <span className={`material-symbols-outlined is-filled text-2xl ${style.iconColor}`}>
+                />
+                <div className="relative z-10 mb-auto flex h-10 w-10 items-center justify-center rounded-full bg-surface-container-lowest shadow-inner">
+                  <span className={`material-symbols-outlined is-filled text-xl ${style.iconColor}`}>
                     {style.icon}
                   </span>
                 </div>
-                <p className="px-1 text-center text-xs leading-tight font-bold text-white">
+                <p className="relative z-10 w-full truncate text-left text-xs font-medium text-on-surface">
                   {folderLabel(f)}
                 </p>
-                <span className="text-[8px] font-medium tracking-tighter text-white/60 uppercase">
-                  {count} {count === 1 ? "Track" : "Tracks"}
+                <span className="relative z-10 w-full truncate text-left text-[10px] text-on-surface-variant">
+                  {count} {count === 1 ? "item" : "items"}
                 </span>
               </button>
             );
@@ -379,24 +354,27 @@ export function Library({
       {!playedOnly && (
         <>
           {/* Search */}
-          <input
-            ref={searchRef}
-            id="library-search"
-            className="mb-3 h-12 w-full rounded-xl border border-outline-dim bg-surface-glass px-4 text-on-surface transition-shadow duration-200 placeholder:text-on-surface-dim focus:ring-2 focus:ring-primary/20 focus:outline-none"
-            type="search"
-            placeholder="Search your audio…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search tracks"
-          />
+          <div className="mb-4 flex h-12 items-center rounded-full border border-white/5 bg-surface-container-high px-4 shadow-sm transition-colors focus-within:border-primary">
+            <span className="material-symbols-outlined mr-3 text-on-surface-variant">search</span>
+            <input
+              ref={searchRef}
+              id="library-search"
+              className="flex-1 border-none bg-transparent text-on-surface placeholder-on-surface-variant outline-none"
+              type="search"
+              placeholder="Search your audio…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="Search tracks"
+            />
+          </div>
 
           {/* Folder chips */}
-          <nav className="mb-4 flex gap-3 overflow-x-auto pb-1" aria-label="Folders">
+          <nav className="mb-4 flex gap-2 overflow-x-auto pb-1" aria-label="Folders">
             <button
-              className={`flex-none rounded-full px-4 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors duration-200 ${
+              className={`flex-none rounded-full px-4 py-1.5 text-xs font-medium whitespace-nowrap transition-colors duration-200 ${
                 filter === "all"
                   ? "bg-primary text-on-primary"
-                  : "bg-surface-glass text-on-surface-dim hover:text-on-surface"
+                  : "border border-white/5 bg-surface-container-high text-on-surface hover:bg-surface-container-highest"
               }`}
               onClick={() => setFilter("all")}
             >
@@ -405,10 +383,10 @@ export function Library({
             {folders.map((f) => (
               <button
                 key={f.id}
-                className={`flex-none rounded-full px-4 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors duration-200 ${
+                className={`flex-none rounded-full px-4 py-1.5 text-xs font-medium whitespace-nowrap transition-colors duration-200 ${
                   filter === f.name
                     ? "bg-primary text-on-primary"
-                    : "bg-surface-glass text-on-surface-dim hover:text-on-surface"
+                    : "border border-white/5 bg-surface-container-high text-on-surface hover:bg-surface-container-highest"
                 }`}
                 onClick={() => setFilter(f.name)}
               >
@@ -419,10 +397,15 @@ export function Library({
         </>
       )}
 
-      <h2 className="mb-3 text-xl font-bold tracking-tight text-on-surface">{heading}</h2>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="font-headline text-xl tracking-tight text-on-surface">{heading}</h2>
+        <span className="text-xs text-on-surface-variant">
+          {visible.length} {visible.length === 1 ? "item" : "items"}
+        </span>
+      </div>
 
       {visible.length === 0 && (
-        <p className="px-3 py-8 text-center text-sm text-on-surface-dim">
+        <p className="px-3 py-8 text-center text-sm text-on-surface-variant">
           {tracks.length === 0
             ? "Your shelf is empty. Upload your first audio from the menu."
             : playedOnly
@@ -446,13 +429,13 @@ export function Library({
                 if (el) rowRefs.current.set(t.id, el);
                 else rowRefs.current.delete(t.id);
               }}
-              className={`relative flex items-center gap-3 rounded-2xl border p-2.5 backdrop-blur-md transition-colors duration-200 ${
+              className={`relative flex items-center gap-3 rounded-[20px] border border-white/5 p-2.5 transition-colors duration-200 ${
                 menuOpen ? "z-30" : "z-0"
-              } ${isDragging ? "opacity-50" : ""} ${isCurrent ? "border-primary/50 bg-white/8" : "border-white/8 bg-white/3"}`}
+              } ${isDragging ? "opacity-50" : ""} ${isCurrent ? "bg-surface-container-high ring-1 ring-primary/40" : "bg-surface-container-low hover:bg-surface-container-high"}`}
             >
               {canReorder && (
                 <button
-                  className="flex h-8 w-6 flex-none touch-none items-center justify-center text-on-surface-dim active:cursor-grabbing"
+                  className="flex h-8 w-6 flex-none touch-none items-center justify-center text-on-surface-variant active:cursor-grabbing"
                   onPointerDown={(e) => {
                     e.preventDefault();
                     beginDrag(t.id);
@@ -463,14 +446,14 @@ export function Library({
                 </button>
               )}
               <button
-                className={`group relative flex h-12 w-12 flex-none items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br shadow-lg ${style.gradient}`}
+                className="group relative flex h-12 w-12 flex-none items-center justify-center overflow-hidden rounded-xl bg-surface-container-highest shadow-sm"
                 onClick={() => onPlay(t, visible)}
                 aria-label={`Play ${t.title}`}
               >
                 <span className={`material-symbols-outlined is-filled text-xl ${style.iconColor} opacity-70 transition-opacity group-hover:opacity-0`}>
                   {style.icon}
                 </span>
-                <span className="material-symbols-outlined is-filled absolute text-xl text-white opacity-0 transition-opacity group-hover:opacity-100">
+                <span className="material-symbols-outlined is-filled absolute text-xl text-on-surface opacity-0 transition-opacity group-hover:opacity-100">
                   play_arrow
                 </span>
               </button>
@@ -484,18 +467,18 @@ export function Library({
                   () => onPlay(t, visible)
                 )}
               >
-                <p className="truncate text-base leading-tight font-bold text-on-surface">
+                <p className="truncate text-sm font-medium text-on-surface">
                   {t.title}
                 </p>
                 <div className="mt-0.5 flex items-center gap-1.5">
                   <span
                     className={`material-symbols-outlined is-filled text-[12px] ${
-                      kept ? "text-primary" : "text-on-surface-dim"
+                      kept ? "text-primary" : "text-on-surface-variant"
                     }`}
                   >
                     {kept ? "offline_pin" : "download"}
                   </span>
-                  <p className="truncate text-[10px] font-medium tracking-tighter text-on-surface-dim/80 uppercase">
+                  <p className="truncate text-[11px] text-on-surface-variant">
                     {fmtTime(t.duration)} · {folderLabel(t.folder)}
                     {t.position > 5 && t.duration - t.position > 5 && (
                       <> · resume {fmtTime(t.position)}</>
@@ -504,7 +487,7 @@ export function Library({
                 </div>
               </button>
               <button
-                className="shrink-0 rounded-full p-1.5 text-on-surface-dim hover:bg-white/5"
+                className="shrink-0 rounded-full p-1.5 text-on-surface-variant hover:bg-surface-container-highest"
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleMenu(t.id);
@@ -651,10 +634,11 @@ export function Library({
 
       {!canReorder && !showAll && visible.length > PAGE_SIZE && (
         <button
-          className="mt-3 w-full rounded-xl bg-surface-glass py-3 text-sm font-semibold text-primary transition-colors hover:bg-white/10"
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-white/5 bg-surface-container py-2.5 text-sm font-medium text-on-surface transition-colors hover:bg-surface-container-high"
           onClick={() => setShowAll(true)}
         >
           Show all {visible.length} tracks
+          <span className="material-symbols-outlined text-[18px]">expand_more</span>
         </button>
       )}
 

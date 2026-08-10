@@ -62,29 +62,29 @@ export function Upload({ folders, onUploaded, onCreateFolder, onRenameFolder, on
   }
 
   return (
-    <section className="mt-8">
-      <h2 className="mb-1 text-xl font-semibold text-on-surface">Upload Files</h2>
-      <p className="mb-4 text-sm text-on-surface-dim">Add new audio to your library with a tap.</p>
+    <section className="mt-4 flex flex-col gap-6">
+      <div>
+        <h2 className="font-headline text-xl text-on-surface">Upload Files</h2>
+        <p className="mt-1 text-sm text-on-surface-variant">Add new audio to your library with a tap.</p>
+      </div>
 
-      <div className="mb-2">
-        <div className="mb-2 ml-1 flex items-center justify-between">
-          <label
-            className="block text-xs font-medium tracking-wider text-on-surface-dim uppercase"
-            htmlFor="upload-folder"
-          >
+      <div className="flex flex-col gap-4 rounded-card border border-white/5 bg-surface-container-low p-4 shadow-sm">
+        <div className="flex items-center justify-between">
+          <label className="text-sm text-on-surface-variant" htmlFor="upload-folder">
             Choose destination folder
           </label>
           <button
-            className="text-xs font-semibold text-primary hover:underline"
+            className="flex items-center gap-1 text-xs font-semibold text-primary transition-opacity hover:opacity-80"
             onClick={() => setManageOpen((v) => !v)}
           >
+            <span className="material-symbols-outlined text-[16px]">folder_managed</span>
             {manageOpen ? "Close" : "Manage folders"}
           </button>
         </div>
         <div className="relative">
           <select
             id="upload-folder"
-            className="h-14 w-full appearance-none rounded-xl border border-outline-dim bg-surface-glass px-4 text-on-surface transition-shadow focus:ring-2 focus:ring-primary/20 focus:outline-none"
+            className="h-12 w-full appearance-none rounded-full border border-white/5 bg-surface-container px-4 text-on-surface transition-colors focus:border-primary focus:outline-none"
             value={folder}
             onChange={(e) => setFolder(e.target.value)}
           >
@@ -94,101 +94,111 @@ export function Upload({ folders, onUploaded, onCreateFolder, onRenameFolder, on
               </option>
             ))}
           </select>
-          <span className="material-symbols-outlined pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-on-surface-dim">
+          <span className="material-symbols-outlined pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-on-surface-variant">
             expand_more
           </span>
         </div>
-      </div>
 
-      {manageOpen && (
-        <div className="mb-4 rounded-xl border border-white/10 bg-surface-glass p-3">
-          <div className="mb-2 flex gap-2">
-            <input
-              className="h-10 min-w-0 flex-1 rounded-lg border border-outline-dim bg-bg/40 px-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/20 focus:outline-none"
-              placeholder="New folder name…"
-              value={newFolderName}
-              onChange={(e) => setNewFolderName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && newFolderName.trim()) {
+        {manageOpen && (
+          <div className="flex flex-col gap-4 border-t border-white/5 pt-4">
+            <div className="flex items-center gap-2">
+              <input
+                className="h-10 min-w-0 flex-1 border-b border-on-surface-variant/30 bg-transparent px-2 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none"
+                placeholder="New folder name…"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newFolderName.trim()) {
+                    onCreateFolder(newFolderName.trim());
+                    setNewFolderName("");
+                  }
+                }}
+              />
+              <button
+                className="flex h-10 w-10 flex-none items-center justify-center rounded-full border border-white/5 bg-surface-container-high text-primary transition-colors hover:bg-surface-variant disabled:opacity-50"
+                disabled={!newFolderName.trim()}
+                onClick={() => {
                   onCreateFolder(newFolderName.trim());
                   setNewFolderName("");
-                }
-              }}
-            />
-            <button
-              className="flex h-10 w-10 flex-none items-center justify-center rounded-lg bg-primary text-on-primary disabled:opacity-50"
-              disabled={!newFolderName.trim()}
-              onClick={() => {
-                onCreateFolder(newFolderName.trim());
-                setNewFolderName("");
-              }}
-              aria-label="Create folder"
-            >
-              <span className="material-symbols-outlined text-lg">add</span>
-            </button>
-          </div>
+                }}
+                aria-label="Create folder"
+              >
+                <span className="material-symbols-outlined text-lg">add</span>
+              </button>
+            </div>
 
-          <ul className="flex flex-col gap-1">
-            {folders.map((f) => (
-              <li key={f.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5">
-                {editingFolder?.id === f.id ? (
-                  <>
-                    <input
-                      autoFocus
-                      className="h-9 min-w-0 flex-1 rounded-md border border-outline-dim bg-bg/40 px-2 text-sm text-on-surface focus:outline-none"
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && editValue.trim()) {
-                          onRenameFolder(f, editValue.trim());
+            <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto">
+              {folders.map((f) => (
+                <li
+                  key={f.id}
+                  className="group flex items-center justify-between gap-2 rounded-lg border border-white/5 bg-surface p-2 transition-colors hover:bg-surface-container-high"
+                >
+                  {editingFolder?.id === f.id ? (
+                    <>
+                      <input
+                        autoFocus
+                        className="h-9 min-w-0 flex-1 rounded-md border border-outline-dim bg-bg/40 px-2 text-sm text-on-surface focus:outline-none"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && editValue.trim()) {
+                            onRenameFolder(f, editValue.trim());
+                            setEditingFolder(null);
+                          }
+                          if (e.key === "Escape") setEditingFolder(null);
+                        }}
+                      />
+                      <button
+                        className="rounded-md px-2 py-1 text-xs font-semibold text-primary"
+                        onClick={() => {
+                          if (editValue.trim()) onRenameFolder(f, editValue.trim());
                           setEditingFolder(null);
-                        }
-                        if (e.key === "Escape") setEditingFolder(null);
-                      }}
-                    />
-                    <button
-                      className="rounded-md px-2 py-1 text-xs font-semibold text-primary"
-                      onClick={() => {
-                        if (editValue.trim()) onRenameFolder(f, editValue.trim());
-                        setEditingFolder(null);
-                      }}
-                    >
-                      Save
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span className="min-w-0 flex-1 truncate text-sm text-on-surface">
-                      {folderLabel(f.name)}
-                    </span>
-                    <button
-                      className="flex h-8 w-8 items-center justify-center rounded-md text-on-surface-dim hover:bg-white/5"
-                      onClick={() => {
-                        setEditingFolder(f);
-                        setEditValue(f.name);
-                      }}
-                      aria-label={`Rename ${f.name}`}
-                    >
-                      <span className="material-symbols-outlined text-base">edit</span>
-                    </button>
-                    <button
-                      className="flex h-8 w-8 items-center justify-center rounded-md text-on-surface-dim hover:text-error hover:bg-white/5"
-                      onClick={() => onDeleteFolder(f)}
-                      aria-label={`Delete ${f.name}`}
-                    >
-                      <span className="material-symbols-outlined text-base">delete</span>
-                    </button>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+                        }}
+                      >
+                        Save
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <span className="material-symbols-outlined text-[20px] text-on-surface-variant">
+                          folder
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-sm text-on-surface">
+                          {folderLabel(f.name)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                        <button
+                          className="flex h-8 w-8 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:text-primary"
+                          onClick={() => {
+                            setEditingFolder(f);
+                            setEditValue(f.name);
+                          }}
+                          aria-label={`Rename ${f.name}`}
+                        >
+                          <span className="material-symbols-outlined text-[16px]">edit</span>
+                        </button>
+                        <button
+                          className="flex h-8 w-8 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:text-error"
+                          onClick={() => onDeleteFolder(f)}
+                          aria-label={`Delete ${f.name}`}
+                        >
+                          <span className="material-symbols-outlined text-[16px]">delete</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
 
       <div
-        className={`group flex h-48 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed transition-all duration-200 active:scale-[0.98] ${
-          dragOver ? "border-primary bg-primary/10" : "border-outline-dim bg-surface-glass/30"
+        className={`group relative flex h-[200px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-card border-2 border-dashed transition-all duration-300 active:scale-[0.98] ${
+          dragOver ? "border-primary bg-surface-container-low" : "border-outline-variant bg-surface-container-lowest hover:border-primary/50 hover:bg-surface-container-low"
         }`}
         onClick={() => inputRef.current?.click()}
         onDragOver={(e) => {
@@ -202,13 +212,14 @@ export function Upload({ folders, onUploaded, onCreateFolder, onRenameFolder, on
           handleFiles(e.dataTransfer.files);
         }}
       >
-        <span className="material-symbols-outlined mb-2 text-4xl text-on-surface-dim transition-colors group-hover:text-primary">
-          upload_file
-        </span>
-        <p className="px-8 text-center text-sm font-medium text-on-surface-dim">
-          Tap to select, or drop audio into “{folderLabel(folder)}”
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-white/5 bg-surface-container-high text-primary transition-transform duration-300 group-hover:-translate-y-1">
+          <span className="material-symbols-outlined text-[32px]">cloud_upload</span>
+        </div>
+        <p className="px-8 text-center text-on-surface">
+          Tap to select, or drop audio into{" "}
+          <span className="font-medium text-primary">'{folderLabel(folder)}'</span>
         </p>
-        <p className="mt-1 text-xs text-outline">MP3, M4A, WAV, FLAC…</p>
+        <p className="mt-1 text-xs text-on-surface-variant">MP3, M4A, WAV, FLAC…</p>
         <input
           ref={inputRef}
           type="file"
@@ -219,24 +230,22 @@ export function Upload({ folders, onUploaded, onCreateFolder, onRenameFolder, on
         />
       </div>
 
-      {error && <p className="mt-3 text-sm text-error">{error}</p>}
+      {error && <p className="text-sm text-error">{error}</p>}
 
       {queue.length > 0 && (
-        <div className="mt-4 space-y-2">
-          <h3 className="px-1 text-xs font-medium tracking-wider text-on-surface-dim uppercase">
-            Uploading ({queue.length})
-          </h3>
+        <div className="flex flex-col gap-3">
+          <h3 className="px-1 text-sm text-on-surface-variant">Uploading ({queue.length})</h3>
           {queue.map((name) => (
             <div
               key={name}
-              className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/5 p-3"
+              className="flex items-center gap-4 rounded-xl border border-white/5 bg-surface-container-low p-4 shadow-sm"
             >
-              <div className="flex h-10 w-10 flex-none items-center justify-center rounded-lg bg-primary/20">
-                <span className="material-symbols-outlined animate-spin text-primary">
+              <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full border border-white/5 bg-surface-container text-primary">
+                <span className="material-symbols-outlined animate-spin text-[20px]">
                   progress_activity
                 </span>
               </div>
-              <p className="truncate text-sm font-medium text-on-surface">{name}</p>
+              <p className="truncate text-sm text-on-surface">{name}</p>
             </div>
           ))}
         </div>

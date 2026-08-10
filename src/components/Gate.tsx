@@ -31,59 +31,53 @@ export function Gate() {
         <div className="absolute top-[40%] -right-[10%] h-[60%] w-[60%] rounded-full bg-secondary/10 blur-[120px]" />
       </div>
 
-      <div className="relative z-10 w-full max-w-sm animate-app-in">
-        <div className="mb-8 flex flex-col items-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-container shadow-lg shadow-black/20">
-            <span className="text-4xl" aria-hidden="true">
+      <div className="relative z-10 flex w-full max-w-sm flex-col items-center animate-app-in">
+        <div className="mb-10 flex flex-col items-center">
+          <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-card bg-primary-container shadow-md">
+            <span className="text-3xl" aria-hidden="true">
               {IS_SALAH ? "🕌" : "🎧"}
             </span>
           </div>
-          <h1 className="text-xl font-extrabold tracking-tight text-on-surface">
-            {IS_SALAH ? "Salah Tracker" : "Adios"}
+          <h1 className="font-headline text-2xl tracking-tight text-on-surface">
+            {IS_SALAH ? "Salah Tracker" : "ADIOS"}
           </h1>
         </div>
 
-        <div className="rounded-xl border border-white/5 bg-surface-glass p-8 shadow-2xl shadow-black/50 backdrop-blur-2xl">
-          <header className="mb-8 text-center">
-            <h2 className="mb-2 text-2xl font-semibold text-on-surface">Welcome back</h2>
-            <p className="text-on-surface-dim">Sign in with the account made for you.</p>
-          </header>
+        <div className="flex w-full flex-col gap-8 rounded-card bg-surface-container-low p-8 shadow-xl">
+          <div className="text-center">
+            <h2 className="font-headline mb-2 text-xl text-on-surface">Welcome back</h2>
+            <p className="text-sm text-on-surface-variant">Sign in with the account made for you.</p>
+          </div>
 
           <form
-            className="space-y-4"
+            className="flex flex-col gap-5"
             onSubmit={(e) => {
               e.preventDefault();
               signIn();
             }}
           >
-            <div className="space-y-2">
-              <label
-                className="block px-1 text-xs font-medium tracking-widest text-on-surface-dim uppercase"
-                htmlFor="gate-email"
-              >
+            <div className="flex flex-col gap-2">
+              <label className="ml-2 text-xs font-medium text-on-surface-variant" htmlFor="gate-email">
                 Email Address
               </label>
               <input
                 id="gate-email"
-                className="h-14 w-full rounded-lg border border-outline-dim bg-bg/40 px-4 text-on-surface transition-shadow duration-200 placeholder:text-outline focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                className="rounded-xl bg-surface-container-highest px-5 py-4 text-on-surface shadow-sm transition-colors placeholder:text-on-surface-variant/50 focus:bg-surface-variant focus:outline-none"
                 type="email"
                 autoComplete="email"
-                placeholder="your@email.com"
+                placeholder="name@domain.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
 
-            <div className="space-y-2">
-              <label
-                className="block px-1 text-xs font-medium tracking-widest text-on-surface-dim uppercase"
-                htmlFor="gate-pass"
-              >
+            <div className="flex flex-col gap-2">
+              <label className="ml-2 text-xs font-medium text-on-surface-variant" htmlFor="gate-pass">
                 Password
               </label>
               <input
                 id="gate-pass"
-                className="h-14 w-full rounded-lg border border-outline-dim bg-bg/40 px-4 text-on-surface transition-shadow duration-200 placeholder:text-outline focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                className="rounded-xl bg-surface-container-highest px-5 py-4 text-on-surface shadow-sm transition-colors placeholder:text-on-surface-variant/50 focus:bg-surface-variant focus:outline-none"
                 type="password"
                 autoComplete="current-password"
                 placeholder="••••••••"
@@ -94,25 +88,26 @@ export function Gate() {
 
             {error && <p className="text-sm text-error">{error}</p>}
 
-            <div className="pt-2">
-              <button
-                className="flex h-14 w-full items-center justify-center gap-2 rounded-lg bg-primary font-semibold text-on-primary shadow-xl shadow-black/30 transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
-                type="submit"
-                disabled={busy || !email || !password}
-              >
-                <span>{busy ? "Unlocking…" : "Unlock"}</span>
-                {!busy && (
-                  <span className="material-symbols-outlined text-xl" aria-hidden="true">
-                    arrow_forward
-                  </span>
-                )}
-              </button>
-            </div>
+            <button
+              className="group mt-4 flex items-center justify-center gap-2 rounded-2xl bg-primary py-4 font-semibold text-on-primary shadow-md transition-colors hover:bg-primary-fixed-dim active:scale-[0.98] disabled:opacity-50"
+              type="submit"
+              disabled={busy || !email || !password}
+            >
+              <span>{busy ? "Unlocking…" : "Unlock"}</span>
+              {!busy && (
+                <span
+                  className="material-symbols-outlined text-xl transition-transform group-hover:translate-x-1"
+                  aria-hidden="true"
+                >
+                  arrow_forward
+                </span>
+              )}
+            </button>
           </form>
         </div>
 
-        <p className="mt-6 text-center text-xs tracking-widest text-on-surface-dim/40 select-none">
-          DESIGNED FOR INTENTIONAL LISTENING
+        <p className="mt-16 text-center text-[11px] tracking-[0.25em] text-on-surface-variant/70 uppercase">
+          {IS_SALAH ? "A quiet space for devotion" : "Designed for intentional listening"}
         </p>
       </div>
     </main>

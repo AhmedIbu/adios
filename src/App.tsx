@@ -335,28 +335,29 @@ export default function App() {
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6rem)" }}
     >
       <header
-        className="sticky top-0 z-30 flex items-center justify-between border-b border-white/5 bg-bg/60 px-4 backdrop-blur-md"
+        className="sticky top-0 z-30 flex items-center justify-between bg-surface/80 px-4 backdrop-blur-xl"
         style={{
           paddingTop: "env(safe-area-inset-top, 0px)",
-          height: "calc(3.5rem + env(safe-area-inset-top, 0px))"
+          height: "calc(4rem + env(safe-area-inset-top, 0px))",
+          boxShadow: "0 1px 8px rgba(0,0,0,0.04)"
         }}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button
-            className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 text-on-surface-dim transition-colors duration-200 hover:text-primary active:scale-90"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant transition-colors duration-200 active:bg-surface-variant"
             onClick={() => setDrawerOpen(true)}
             aria-label="Open menu"
             title="Menu"
           >
             <span className="material-symbols-outlined text-xl">menu</span>
           </button>
-          <h1 className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-lg font-extrabold tracking-tight text-transparent">
+          <h1 className="font-headline bg-gradient-to-r from-primary to-secondary bg-clip-text text-lg tracking-tight text-transparent">
             Hey Ibu 👋
           </h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button
-            className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 text-on-surface-dim transition-colors duration-200 hover:text-primary active:scale-90"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant transition-colors duration-200 active:bg-surface-variant"
             onClick={() => setApp("picker")}
             aria-label="Switch app"
             title="Switch app"
@@ -364,7 +365,7 @@ export default function App() {
             <span className="material-symbols-outlined text-xl">apps</span>
           </button>
           <button
-            className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 text-on-surface-dim transition-colors duration-200 hover:text-primary active:scale-90"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant transition-colors duration-200 active:bg-surface-variant"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             aria-label="Toggle theme"
             title="Toggle theme"
@@ -378,87 +379,107 @@ export default function App() {
 
       {/* Sidebar drawer */}
       <div
-        className={`fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-brand ${
+        className={`fixed inset-0 z-[60] bg-surface/80 backdrop-blur-sm transition-opacity duration-300 ease-brand ${
           drawerOpen ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
         onClick={() => setDrawerOpen(false)}
         aria-hidden={!drawerOpen}
       />
       <nav
-        className={`fixed top-0 left-0 z-[70] flex h-full w-72 max-w-[80%] flex-col border-r border-white/10 bg-surface shadow-2xl transition-transform duration-300 ease-brand ${
+        className={`fixed top-0 left-0 z-[70] flex h-full w-72 max-w-[80%] flex-col bg-surface-container shadow-2xl transition-transform duration-300 ease-brand ${
           drawerOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
         aria-label="Main menu"
       >
-        <div className="flex h-14 items-center px-4">
-          <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-lg font-extrabold tracking-tight text-transparent">
-            Adios
+        <div className="flex items-center gap-3 border-b border-outline-variant/40 p-4 pt-8">
+          <span className="text-2xl" aria-hidden="true">🎧</span>
+          <span className="font-headline bg-gradient-to-r from-primary to-secondary bg-clip-text text-lg tracking-tight text-transparent">
+            ADIOS
           </span>
+          <button
+            className="ml-auto flex h-8 w-8 items-center justify-center rounded-full text-on-surface-variant transition-colors active:bg-surface-variant"
+            onClick={() => setDrawerOpen(false)}
+            aria-label="Close menu"
+          >
+            <span className="material-symbols-outlined text-[20px]">close</span>
+          </button>
         </div>
-        <div className="flex flex-col gap-1 px-3 py-2">
-          <div className="flex items-center rounded-xl hover:bg-white/5">
+        <div className="flex flex-col gap-1 px-2 py-4">
+          <div
+            className={`flex items-center rounded-xl transition-colors ${view === "home" ? "bg-surface-variant/50" : ""}`}
+          >
             <button
               className={`flex flex-1 items-center gap-3 px-3 py-3 text-left transition-colors ${
-                view === "home" ? "text-primary" : "text-on-surface"
+                view === "home" ? "text-on-surface" : "text-on-surface-variant"
               }`}
               onClick={goHome}
             >
-              <span className="material-symbols-outlined is-filled">library_music</span>
-              <span className="font-semibold">Library</span>
+              <span className={`material-symbols-outlined ${view === "home" ? "is-filled text-primary" : ""}`}>
+                library_music
+              </span>
+              <span className="text-sm font-medium">Library</span>
             </button>
             <button
-              className="flex h-11 w-11 flex-none items-center justify-center text-on-surface-dim"
+              className="flex h-11 w-11 flex-none items-center justify-center text-on-surface-variant"
               onClick={() => setLibraryExpanded((v) => !v)}
               aria-label={libraryExpanded ? "Collapse folders" : "Expand folders"}
               aria-expanded={libraryExpanded}
             >
-              <span className="material-symbols-outlined">
-                {libraryExpanded ? "expand_less" : "expand_more"}
+              <span
+                className={`material-symbols-outlined text-[20px] transition-transform duration-200 ${libraryExpanded ? "rotate-180" : ""}`}
+              >
+                expand_more
               </span>
             </button>
           </div>
 
           {libraryExpanded && (
-            <div className="ml-6 flex flex-col gap-0.5 border-l border-white/10 pl-3">
+            <div className="flex flex-col gap-1 py-1 pr-3 pl-11">
               <button
-                className={`rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-white/5 ${
+                className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-surface-variant ${
                   view === "browse" && browseFolder === "all"
-                    ? "font-semibold text-primary"
-                    : "text-on-surface-dim"
+                    ? "font-medium text-on-surface"
+                    : "text-on-surface-variant"
                 }`}
                 onClick={() => goBrowse("all")}
               >
-                All
+                <span className="material-symbols-outlined text-[18px] transition-colors group-hover:text-secondary">
+                  folder
+                </span>
+                <span className="text-sm">All</span>
               </button>
               {folders.map((f) => (
                 <button
                   key={f.id}
-                  className={`rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-white/5 ${
+                  className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-surface-variant ${
                     view === "browse" && browseFolder === f.name
-                      ? "font-semibold text-primary"
-                      : "text-on-surface-dim"
+                      ? "font-medium text-on-surface"
+                      : "text-on-surface-variant"
                   }`}
                   onClick={() => goBrowse(f.name)}
                 >
-                  {folderLabel(f.name)}
+                  <span className="material-symbols-outlined text-[18px] transition-colors group-hover:text-secondary">
+                    folder
+                  </span>
+                  <span className="text-sm">{folderLabel(f.name)}</span>
                 </button>
               ))}
             </div>
           )}
 
           <button
-            className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-white/5 ${
-              view === "upload" ? "text-primary" : "text-on-surface"
+            className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-surface-variant ${
+              view === "upload" ? "text-on-surface" : "text-on-surface-variant"
             }`}
             onClick={goUpload}
           >
-            <span className="material-symbols-outlined">upload_file</span>
-            <span className="font-semibold">Upload</span>
+            <span className="material-symbols-outlined">cloud_upload</span>
+            <span className="text-sm font-medium">Upload</span>
           </button>
         </div>
 
-        <div className="mt-auto px-6 pb-6">
+        <div className="mt-auto border-t border-outline-variant/40 bg-surface-container-low/50 p-4">
           {storageBytes !== null && (
             <>
               {(() => {
@@ -468,7 +489,13 @@ export default function App() {
                 const capMb = (cap / 1_000_000).toFixed(0);
                 return (
                   <>
-                    <div className="mb-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-xs text-on-surface-variant">Storage</span>
+                      <span className="text-xs text-primary">
+                        {usedMb} MB / {capMb} MB
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-variant">
                       <div
                         className={`h-full rounded-full transition-all duration-500 ${
                           pct > 90 ? "bg-error" : "bg-primary"
@@ -476,9 +503,6 @@ export default function App() {
                         style={{ width: `${pct}%` }}
                       />
                     </div>
-                    <p className="text-xs text-on-surface-dim">
-                      {usedMb} MB / {capMb} MB used
-                    </p>
                   </>
                 );
               })()}

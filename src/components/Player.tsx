@@ -98,13 +98,11 @@ export function Player({
     <>
       {/* Mini bar */}
       <div
-        className={`fixed right-3 left-3 z-40 mx-auto flex h-16 max-w-xl items-center justify-between overflow-hidden rounded-[24px] border border-white/10 px-3 shadow-[0_15px_40px_rgba(0,0,0,0.5)] ring-1 ring-white/5 backdrop-blur-2xl transition-all duration-[400ms] ease-brand ${
+        className={`fixed right-3 left-3 z-40 mx-auto flex h-16 max-w-xl items-center gap-3 overflow-hidden rounded-full bg-surface-container-high/90 px-3 shadow-[0_4px_24px_rgba(0,0,0,0.3)] backdrop-blur-2xl transition-all duration-[400ms] ease-brand ${
           open ? "pointer-events-none translate-y-[calc(100%+2rem)] opacity-0" : ""
         }`}
         style={{
-          bottom: `calc(env(safe-area-inset-bottom, 0px) + ${lifted ? "5.5rem" : "1rem"})`,
-          backgroundColor: "rgb(45 49 51 / 0.7)",
-          backdropFilter: "blur(24px) saturate(180%)"
+          bottom: `calc(env(safe-area-inset-bottom, 0px) + ${lifted ? "5.5rem" : "1rem"})`
         }}
       >
         <button
@@ -112,16 +110,16 @@ export function Player({
           onClick={() => setOpen(true)}
           aria-label="Open player"
         >
-          <span className="relative flex h-10 w-10 flex-none items-center justify-center rounded-xl border border-white/10 bg-primary-container text-lg shadow-lg">
-            🎧
+          <span className="relative flex h-10 w-10 flex-none items-center justify-center rounded-full bg-primary-container text-on-primary-container">
+            <span className="material-symbols-outlined is-filled text-xl">headset</span>
             <span
-              className={`absolute right-0.5 bottom-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#2d3133] bg-primary ${
+              className={`absolute right-0.5 bottom-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface-container-high bg-primary ${
                 playing ? "animate-pulse" : ""
               }`}
             />
           </span>
           <span className="min-w-0">
-            <p className="truncate text-sm leading-tight font-extrabold tracking-tight text-on-surface">
+            <p className="truncate text-sm leading-tight font-medium text-on-surface">
               {track.title}
             </p>
             <span className="mt-0.5 flex items-center gap-1.5">
@@ -134,14 +132,14 @@ export function Player({
                   />
                 ))}
               </span>
-              <span className="text-[8px] font-black tracking-[0.1em] text-primary uppercase opacity-90">
+              <span className="text-[10px] font-medium text-on-surface-variant">
                 {playing ? "Playing" : "Paused"}
               </span>
             </span>
           </span>
         </button>
         <button
-          className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-primary text-on-primary shadow-lg transition-transform active:scale-90"
+          className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-primary text-on-primary shadow-md transition-transform active:scale-90"
           onClick={onToggle}
           aria-label={playing ? "Pause" : "Play"}
         >
@@ -150,10 +148,7 @@ export function Player({
           </span>
         </button>
         <div className="absolute right-6 bottom-0 left-6 h-0.5 overflow-hidden rounded-full bg-white/5">
-          <div
-            className="h-full bg-gradient-to-r from-primary to-secondary"
-            style={{ width: `${pct}%` }}
-          />
+          <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
         </div>
       </div>
 
@@ -210,9 +205,9 @@ export function Player({
             )}
           </div>
 
-          <div className="mb-8">
-            <h2 className="text-2xl font-semibold tracking-tight text-primary">{track.title}</h2>
-            <p className="mt-1 font-medium text-on-surface-dim capitalize opacity-90">
+          <div className="mb-8 text-center">
+            <h2 className="font-headline text-2xl text-on-surface">{track.title}</h2>
+            <p className="mt-1 text-on-surface-variant capitalize opacity-90">
               {track.folder}
             </p>
           </div>
@@ -254,7 +249,7 @@ export function Player({
               <SkipIcon direction="back" />
             </button>
             <button
-              className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-black shadow-lg shadow-black/30 transition-all hover:brightness-95 active:scale-95"
+              className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-on-primary shadow-lg transition-all hover:scale-105 active:scale-95"
               onClick={onToggle}
               aria-label={playing ? "Pause" : "Play"}
             >
@@ -279,7 +274,7 @@ export function Player({
             </button>
           </div>
 
-          <div className="flex items-center justify-between px-2">
+          <div className="flex items-center justify-between rounded-xl border border-white/5 bg-surface-container-low px-2 py-4">
             <button
               className="rounded-full px-3 py-1.5 text-sm font-bold text-on-surface transition-colors hover:bg-surface-high active:scale-90"
               onClick={() => setSheet("speed")}
@@ -341,17 +336,17 @@ export function Player({
           onClick={() => setSheet(null)}
         >
           <div
-            className="mx-auto flex max-h-[75vh] w-full max-w-xl flex-col rounded-t-3xl bg-[#1a1a1a] shadow-2xl"
+            className="mx-auto flex max-h-[75vh] w-full max-w-xl flex-col rounded-t-3xl bg-surface-container-low shadow-2xl"
             style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-center pt-3 pb-1">
-              <div className="h-1 w-10 rounded-full bg-white/20" />
+              <div className="h-1 w-10 rounded-full bg-outline-variant" />
             </div>
 
             {sheet === "speed" && (
               <>
-                <h3 className="py-3 text-center text-base font-semibold text-on-surface">Speed</h3>
+                <h3 className="font-headline py-3 text-center text-base text-on-surface">Speed</h3>
                 <p className="mb-4 text-center text-3xl font-bold text-on-surface">{speed}×</p>
                 <input
                   type="range"
@@ -362,9 +357,8 @@ export function Player({
                   onChange={(e) => onSpeed(Number(e.target.value))}
                   aria-label="Playback speed slider"
                   className="mx-6 w-[calc(100%-3rem)]"
-                  style={{ accentColor: "#fff" }}
                 />
-                <div className="mx-6 mb-4 flex justify-between text-[11px] text-on-surface-dim">
+                <div className="mx-6 mb-4 flex justify-between text-[11px] text-on-surface-variant">
                   <span>0.5</span>
                   <span>1</span>
                   <span>1.5</span>
@@ -375,7 +369,7 @@ export function Player({
                     <button
                       key={s}
                       className={`flex-1 rounded-full py-2.5 text-sm font-bold transition-colors ${
-                        speed === s ? "bg-white text-black" : "bg-white/10 text-on-surface"
+                        speed === s ? "bg-primary text-on-primary" : "bg-surface-container-high text-on-surface"
                       }`}
                       onClick={() => onSpeed(s)}
                     >

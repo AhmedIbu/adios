@@ -1,56 +1,112 @@
 @import "tailwindcss";
 
 /* ============ Theme tokens ============ */
-/* Dark values come from the Stitch mockups; light is derived from the same
-   hue families since the mockups only specify a dark design. */
+/* Adios's own redesign — a Material-3 dark scheme (sage-mint primary, warm
+   gold secondary, dusty-rose tertiary) from the Stitch mockups; light is
+   derived following standard M3 light/dark role relationships since the
+   mockups only specified a dark design. */
 :root[data-theme="dark"] {
-  --bg: #494d5f;
-  --surface: #2c2f3c;
-  --surface-glass: rgb(44 47 60 / 0.6);
-  --surface-high: #3a3d4d;
-  --on-surface: #f1f0f4;
-  --on-surface-dim: #c1c7ce;
-  --outline: #8b9198;
-  --outline-dim: rgb(139 145 152 / 0.3);
-  --primary: #9accf3;
-  --on-primary: #00344d;
-  --primary-container: #285f80;
-  --on-primary-container: #bee9ff;
-  --secondary: #d5bbf9;
-  --on-secondary: #3a2659;
-  --secondary-container: #513c71;
-  --on-secondary-container: #eddcff;
-  --tertiary: #fdc97f;
-  --on-tertiary: #442b00;
-  --tertiary-container: #785313;
-  --on-tertiary-container: #ffddb2;
+  --bg: #121412;
+  --surface: #121412;
+  --surface-glass: rgb(26 28 26 / 0.7);
+  --surface-dim: #121412;
+  --surface-bright: #383a37;
+  --surface-container-lowest: #0d0f0d;
+  --surface-container-low: #1a1c1a;
+  --surface-container: #1e201e;
+  --surface-container-high: #292a28;
+  --surface-container-highest: #333533;
+  --surface-high: #292a28;
+  --surface-variant: #333533;
+  --on-surface: #e2e3df;
+  --on-surface-dim: #c2c8c1;
+  --on-surface-variant: #c2c8c1;
+  --outline: #8d928b;
+  --outline-dim: rgb(141 146 139 / 0.3);
+  --outline-variant: #424843;
+  --primary: #cee9d1;
+  --on-primary: #1e3525;
+  --primary-container: #b2cdb6;
+  --on-primary-container: #405846;
+  --primary-fixed: #cee9d2;
+  --primary-fixed-dim: #b2cdb6;
+  --on-primary-fixed: #092011;
+  --on-primary-fixed-variant: #354c3b;
+  --secondary: #d4c5a1;
+  --on-secondary: #383016;
+  --secondary-container: #50462a;
+  --on-secondary-container: #c2b491;
+  --secondary-fixed: #f1e1bc;
+  --secondary-fixed-dim: #d4c5a1;
+  --on-secondary-fixed: #221b04;
+  --on-secondary-fixed-variant: #50462a;
+  --tertiary: #ffd9dd;
+  --on-tertiary: #46282c;
+  --tertiary-container: #e9bbc0;
+  --on-tertiary-container: #6c494e;
+  --tertiary-fixed: #ffd9dd;
+  --tertiary-fixed-dim: #e9bbc0;
+  --on-tertiary-fixed: #2e1418;
+  --on-tertiary-fixed-variant: #5f3e42;
   --error: #ffb4ab;
   --on-error: #690005;
+  --error-container: #93000a;
+  --on-error-container: #ffdad6;
+  --inverse-surface: #e2e3df;
+  --inverse-on-surface: #2f312e;
+  --inverse-primary: #4c6451;
 }
 
 :root[data-theme="light"] {
-  --bg: #f4f2f7;
-  --surface: #ffffff;
-  --surface-glass: rgb(255 255 255 / 0.65);
-  --surface-high: #eceaf1;
-  --on-surface: #201f26;
-  --on-surface-dim: #5c5b66;
-  --outline: #8a8794;
-  --outline-dim: rgb(138 135 148 / 0.3);
-  --primary: #2e6385;
+  --bg: #fbfdf8;
+  --surface: #fbfdf8;
+  --surface-glass: rgb(255 255 255 / 0.7);
+  --surface-dim: #daddd6;
+  --surface-bright: #fbfdf8;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #f5f7f0;
+  --surface-container: #eff1ea;
+  --surface-container-high: #e9ece4;
+  --surface-container-highest: #e3e6de;
+  --surface-high: #e9ece4;
+  --surface-variant: #dde4d8;
+  --on-surface: #1a1c19;
+  --on-surface-dim: #42493f;
+  --on-surface-variant: #42493f;
+  --outline: #72796d;
+  --outline-dim: rgb(114 121 109 / 0.3);
+  --outline-variant: #c2c9bb;
+  --primary: #3d6647;
   --on-primary: #ffffff;
-  --primary-container: #d3ecff;
-  --on-primary-container: #001f2a;
-  --secondary: #6b4f96;
+  --primary-container: #bfecc4;
+  --on-primary-container: #234f2e;
+  --primary-fixed: #bfecc4;
+  --primary-fixed-dim: #a4d0aa;
+  --on-primary-fixed: #002109;
+  --on-primary-fixed-variant: #234f2e;
+  --secondary: #6d5d3f;
   --on-secondary: #ffffff;
-  --secondary-container: #ecdcff;
-  --on-secondary-container: #250f43;
-  --tertiary: #8a5a12;
+  --secondary-container: #f6e1b9;
+  --on-secondary-container: #534528;
+  --secondary-fixed: #f6e1b9;
+  --secondary-fixed-dim: #d9c5a0;
+  --on-secondary-fixed: #241a04;
+  --on-secondary-fixed-variant: #534528;
+  --tertiary: #8c4a51;
   --on-tertiary: #ffffff;
-  --tertiary-container: #ffe4bd;
-  --on-tertiary-container: #2b1700;
+  --tertiary-container: #ffd9dd;
+  --on-tertiary-container: #6c333b;
+  --tertiary-fixed: #ffd9dd;
+  --tertiary-fixed-dim: #ffb2bb;
+  --on-tertiary-fixed: #3b0711;
+  --on-tertiary-fixed-variant: #6c333b;
   --error: #ba1a1a;
   --on-error: #ffffff;
+  --error-container: #ffdad6;
+  --on-error-container: #93000a;
+  --inverse-surface: #2e312c;
+  --inverse-on-surface: #eff1ea;
+  --inverse-primary: #a4d0aa;
 }
 
 /* Salah tracker: warm cream Material-3 palette (light) / "Midnight Devotion"
@@ -198,7 +254,9 @@
   color: var(--s-on-surface);
 }
 
-.salah-app .font-headline {
+/* Global — used by Adios directly and inherited (redundantly but harmlessly)
+   by Salah's more specific .salah-app .font-headline rule below. */
+.font-headline {
   font-family: "Libre Caslon Text", serif;
 }
 
@@ -258,30 +316,60 @@
 }
 
 @theme {
-  --font-sans: "Manrope", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "Libre Caslon Text", Georgia, serif;
 
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-glass: var(--surface-glass);
   --color-surface-high: var(--surface-high);
+  --color-surface-dim: var(--surface-dim);
+  --color-surface-bright: var(--surface-bright);
+  --color-surface-container-lowest: var(--surface-container-lowest);
+  --color-surface-container-low: var(--surface-container-low);
+  --color-surface-container: var(--surface-container);
+  --color-surface-container-high: var(--surface-container-high);
+  --color-surface-container-highest: var(--surface-container-highest);
+  --color-surface-variant: var(--surface-variant);
   --color-on-surface: var(--on-surface);
   --color-on-surface-dim: var(--on-surface-dim);
+  --color-on-surface-variant: var(--on-surface-variant);
   --color-outline: var(--outline);
   --color-outline-dim: var(--outline-dim);
+  --color-outline-variant: var(--outline-variant);
   --color-primary: var(--primary);
   --color-on-primary: var(--on-primary);
   --color-primary-container: var(--primary-container);
   --color-on-primary-container: var(--on-primary-container);
+  --color-primary-fixed: var(--primary-fixed);
+  --color-primary-fixed-dim: var(--primary-fixed-dim);
+  --color-on-primary-fixed: var(--on-primary-fixed);
+  --color-on-primary-fixed-variant: var(--on-primary-fixed-variant);
   --color-secondary: var(--secondary);
   --color-on-secondary: var(--on-secondary);
   --color-secondary-container: var(--secondary-container);
   --color-on-secondary-container: var(--on-secondary-container);
+  --color-secondary-fixed: var(--secondary-fixed);
+  --color-secondary-fixed-dim: var(--secondary-fixed-dim);
+  --color-on-secondary-fixed: var(--on-secondary-fixed);
+  --color-on-secondary-fixed-variant: var(--on-secondary-fixed-variant);
   --color-tertiary: var(--tertiary);
   --color-on-tertiary: var(--on-tertiary);
   --color-tertiary-container: var(--tertiary-container);
   --color-on-tertiary-container: var(--on-tertiary-container);
+  --color-tertiary-fixed: var(--tertiary-fixed);
+  --color-tertiary-fixed-dim: var(--tertiary-fixed-dim);
+  --color-on-tertiary-fixed: var(--on-tertiary-fixed);
+  --color-on-tertiary-fixed-variant: var(--on-tertiary-fixed-variant);
   --color-error: var(--error);
   --color-on-error: var(--on-error);
+  --color-error-container: var(--error-container);
+  --color-on-error-container: var(--on-error-container);
+  --color-inverse-surface: var(--inverse-surface);
+  --color-inverse-on-surface: var(--inverse-on-surface);
+  --color-inverse-primary: var(--inverse-primary);
+
+  --radius-card: 24px;
 
   --ease-brand: cubic-bezier(0.32, 0.72, 0, 1);
 
@@ -301,10 +389,10 @@
 .mesh-gradient {
   background-color: var(--color-bg);
   background-image:
-    radial-gradient(at 0% 0%, rgb(81 60 113 / 0.4) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgb(46 99 133 / 0.4) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgb(81 60 113 / 0.2) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, rgb(154 204 243 / 0.15) 0px, transparent 50%);
+    radial-gradient(at 0% 0%, rgb(206 233 209 / 0.1) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgb(212 197 161 / 0.08) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgb(206 233 209 / 0.06) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgb(255 217 221 / 0.06) 0px, transparent 50%);
 }
 
 /* Layered so Tailwind's utility classes (e.g. text-on-primary) still win

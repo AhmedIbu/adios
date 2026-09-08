@@ -120,3 +120,34 @@ export function countInRange(logs: SinLog[], sinTypeId: string, from: Date, to: 
     return t >= from.getTime() && t <= to.getTime();
   }).length;
 }
+
+/** Days since the most recent log of any type, or null if nothing has ever been logged. */
+export function daysSinceAny(logs: SinLog[], today: Date): number | null {
+  if (logs.length === 0) return null;
+  const last = logs.reduce((a, b) => (a.occurred_at > b.occurred_at ? a : b));
+  const diffMs = today.getTime() - new Date(last.occurred_at).getTime();
+  return Math.max(0, Math.floor(diffMs / 86400000));
+}
+
+/** Entry counts for each of the last `weeks` 7-day windows (oldest first), ending today. */
+export function weeklyCounts(
+  logs: SinLog[],
+  today: Date,
+  weeks: number
+): { label: string; count: number }[] {
+  const result: { label: string; count: number }[] = [];
+  for (let i = weeks - 1; i >= 0; i--) {
+    const to = new Date(today);
+    to.setDate(to.getDate() - i * 7);
+    const from = new Date(to);
+    from.setDate(from.getDate() - 6);
+    from.setHours(0, 0, 0, 0);
+    to.setHours(23, 59, 59, 999);
+    const count = logs.filter((l) => {
+      const t = new Date(l.occurred_at).getTime();
+      return t >= from.getTime() && t <= to.getTime();
+    }).length;
+    result.push({ label: `${from.getMonth() + 1}/${from.getDate()}`, count });
+  }
+  return result;
+}

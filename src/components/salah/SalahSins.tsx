@@ -3,13 +3,15 @@ import type { SinLog, SinType } from "../../lib/sins";
 import {
   createSinType,
   daysSince,
+  daysSinceAny,
   deleteSinLog,
   deleteSinType,
   listSinLogs,
   logSin,
   seedDefaultSinTypesIfEmpty,
   severityColor,
-  updateSinType
+  updateSinType,
+  weeklyCounts
 } from "../../lib/sins";
 import { DUAS } from "../../lib/content/duas";
 import { allQuotes } from "../../lib/reminders";
@@ -87,6 +89,10 @@ export function SalahSins() {
       .sort((a, b) => (counts.get(b.id) ?? 0) - (counts.get(a.id) ?? 0))
       .slice(0, 4);
   }, [types, logs]);
+
+  const daysSinceLast = useMemo(() => daysSinceAny(logs, today), [logs, today]);
+  const trend = useMemo(() => weeklyCounts(logs, today, 8), [logs, today]);
+  const maxTrendCount = Math.max(1, ...trend.map((w) => w.count));
 
   async function quickLog(t: SinType) {
     try {
@@ -240,6 +246,22 @@ export function SalahSins() {
         </p>
       </div>
 
+      {/* Gentle nudge to check in, shown after a stretch of no entries. */}
+      {logs.length > 0 && daysSinceLast !== null && daysSinceLast >= 14 && (
+        <div
+          className="flex items-center gap-3 rounded-2xl p-4 shadow-sm"
+          style={{ background: "var(--s-secondary-container)" }}
+        >
+          <span className="material-symbols-outlined text-[22px] flex-none" style={{ color: "var(--s-on-secondary-container)" }}>
+            self_improvement
+          </span>
+          <p className="text-sm leading-relaxed" style={{ color: "var(--s-on-secondary-container)" }}>
+            It's been {daysSinceLast} days since your last check-in. Whether that's progress or you've
+            just drifted from the habit, take a quiet moment to be honest with yourself.
+          </p>
+        </div>
+      )}
+
       {/* Record an Action */}
       <div className="relative flex flex-col gap-4 overflow-hidden rounded-2xl p-5 shadow-sm" style={{ background: "var(--s-surface-container)" }}>
         <div
@@ -340,6 +362,45 @@ export function SalahSins() {
                 <span className="h-2 w-2 rounded-full" style={{ background: severityColor(t.severity) }} />
                 {t.name}
               </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Trend */}
+      {logs.length > 0 && (
+        <div className="flex flex-col gap-4 rounded-2xl p-5 shadow-sm" style={{ background: "var(--s-surface-container)" }}>
+          <div className="flex items-center justify-between">
+            <h3 className="text-[12px] font-bold uppercase tracking-widest" style={{ color: "var(--s-on-surface-variant)" }}>
+              Weekly Trend
+            </h3>
+            <span className="text-xs" style={{ color: "var(--s-on-surface-variant)" }}>
+              Last 8 weeks
+            </span>
+          </div>
+          <div className="flex h-24 items-end justify-between gap-1.5 px-1">
+            {trend.map((w, i) => (
+              <div key={i} className="flex flex-1 flex-col justify-end">
+                <div
+                  className="relative w-full flex-1 self-stretch rounded-t-sm"
+                  style={{ background: "color-mix(in srgb, var(--s-tertiary-fixed-dim, var(--s-tertiary)) 15%, transparent)" }}
+                >
+                  <div
+                    className="absolute bottom-0 w-full rounded-t-sm transition-all duration-700 ease-out"
+                    style={{
+                      height: `${Math.max((w.count / maxTrendCount) * 100, w.count > 0 ? 8 : 0)}%`,
+                      background: "var(--s-tertiary-fixed-dim, var(--s-tertiary))"
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between gap-1.5 px-1">
+            {trend.map((w, i) => (
+              <span key={i} className="flex-1 text-center text-[9px]" style={{ color: "var(--s-on-surface-variant)" }}>
+                {w.label}
+              </span>
             ))}
           </div>
         </div>
@@ -499,15 +560,22 @@ export function SalahSins() {
                 >
                   <button className="flex flex-1 items-center gap-3 text-left" onClick={() => openLog(t)}>
                     <span className="h-3 w-3 flex-none rounded-full" style={{ background: severityColor(t.severity) }} />
-                    <div>
-                      <p className="text-sm font-semibold" style={{ color: "var(--s-on-surface)" }}>
-                        {t.name}
-                      </p>
-                      <p className="text-xs" style={{ color: "var(--s-on-surface-variant)" }}>
-                        {d === null ? "Not logged yet" : `${d} ${d === 1 ? "day" : "days"} since last`}
-                      </p>
-                    </div>
+                    <p className="text-sm font-semibold" style={{ color: "var(--s-on-surface)" }}>
+                      {t.name}
+                    </p>
                   </button>
+                  <span
+                    className="flex-none rounded-full px-2.5 py-1 text-[11px] font-bold"
+                    style={
+                      d === null
+                        ? { background: "var(--s-surface-container-high)", color: "var(--s-on-surface-variant)" }
+                        : d >= 7
+                          ? { background: "var(--s-secondary-container)", color: "var(--s-on-secondary-container)" }
+                          : { background: "color-mix(in srgb, var(--s-error) 15%, transparent)", color: "var(--s-error)" }
+                    }
+                  >
+                    {d === null ? "Never" : d === 0 ? "Today" : `${d}d ago`}
+                  </span>
                   <button
                     className="flex h-8 w-8 flex-none items-center justify-center rounded-full transition-colors"
                     style={{ color: "var(--s-on-surface-variant)" }}

@@ -3,6 +3,7 @@ import type { Track } from "../lib/types";
 import { playableUrl } from "../lib/offline";
 import { savePosition } from "../lib/supabase";
 import { vibrate } from "../lib/haptics";
+import { getFolderSpeed } from "../lib/folderSpeed";
 
 export type LoopMode = "off" | "all" | "one";
 
@@ -128,7 +129,8 @@ export function usePlayer(onTrackChange?: (t: Track) => void) {
 
       a.src = url;
       a.dataset.trackId = track.id;
-      a.playbackRate = stateRef.current.speed;
+      const speed = getFolderSpeed(track.folder) ?? stateRef.current.speed;
+      a.playbackRate = speed;
 
       // Resume: prefer freshest local position, fall back to cloud value.
       const localPos = parseFloat(localStorage.getItem(`pos:${track.id}`) ?? "");
@@ -139,7 +141,7 @@ export function usePlayer(onTrackChange?: (t: Track) => void) {
         a.currentTime = 0;
       }
 
-      setState((s) => ({ ...s, track, position, time: a.currentTime, duration: track.duration }));
+      setState((s) => ({ ...s, track, position, time: a.currentTime, duration: track.duration, speed }));
       if (autoplay) {
         await a.play();
         onTrackChangeRef.current?.(track);
@@ -237,6 +239,21 @@ export function usePlayer(onTrackChange?: (t: Track) => void) {
     [loadAndPlay]
   );
 
+  /** Move the queue item at `fromPos` to `toPos` within the play order (Up Next reordering). */
+  const reorderQueue = useCallback((fromPos: number, toPos: number) => {
+    setState((s) => {
+      if (fromPos === toPos || fromPos < 0 || fromPos >= s.order.length) return s;
+      const order = [...s.order];
+      const [item] = order.splice(fromPos, 1);
+      order.splice(toPos, 0, item);
+      let position = s.position;
+      if (fromPos === position) position = toPos;
+      else if (fromPos < position && toPos >= position) position -= 1;
+      else if (fromPos > position && toPos <= position) position += 1;
+      return { ...s, order, position };
+    });
+  }, []);
+
   const toggleShuffle = useCallback(() => {
     setState((s) => {
       const shuffle = !s.shuffle;
@@ -307,6 +324,7 @@ export function usePlayer(onTrackChange?: (t: Track) => void) {
     next,
     prev,
     jumpTo,
+    reorderQueue,
     toggleShuffle,
     cycleLoop,
     toggle,

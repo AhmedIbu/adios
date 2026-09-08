@@ -1,7 +1,8 @@
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { PlayerState } from "../hooks/usePlayer";
-import { fmtTime } from "../lib/types";
+import { folderLabel, fmtTime } from "../lib/types";
 import { vibrate } from "../lib/haptics";
+import { clearFolderSpeed, getFolderSpeed, setFolderSpeed } from "../lib/folderSpeed";
 
 interface Props {
   state: PlayerState;
@@ -13,6 +14,7 @@ interface Props {
   onNext: () => void;
   onPrev: () => void;
   onJumpTo: (position: number) => void;
+  onReorderQueue: (fromPos: number, toPos: number) => void;
   onToggleShuffle: () => void;
   onCycleLoop: () => void;
   /** Raise the mini bar clear of a bottom tab bar (e.g. the Salah view). */
@@ -23,6 +25,21 @@ const SPEEDS = [0.75, 1, 1.25, 1.5, 1.75, 2];
 const SLEEPS = [5, 10, 15, 30, 45, 60];
 const WAVE_HEIGHTS = [10, 18, 26, 15, 22, 30, 14, 20];
 const SWIPE_THRESHOLD = 70;
+const SEEK_BAR_COUNT = 46;
+
+/** Deterministic pseudo-random bar heights (0.25-1) seeded by track id — a
+ *  stable decorative waveform shape, not real amplitude analysis. */
+function waveformHeights(seed: string, count: number): number[] {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  let state = h || 1;
+  const heights: number[] = [];
+  for (let i = 0; i < count; i++) {
+    state = (state * 1103515245 + 12345) >>> 0;
+    heights.push(0.25 + ((state >>> 8) % 1000) / 1000 / 1.33);
+  }
+  return heights;
+}
 
 function SkipIcon({ direction }: { direction: "back" | "forward" }) {
   return (
@@ -54,6 +71,7 @@ export function Player({
   onNext,
   onPrev,
   onJumpTo,
+  onReorderQueue,
   onToggleShuffle,
   onCycleLoop,
   lifted = false
@@ -67,7 +85,101 @@ export function Player({
   const dragging = useRef(false);
   const startX = useRef(0);
 
+  const bars = useMemo(() => waveformHeights(track?.id ?? "x", SEEK_BAR_COUNT), [track?.id]);
+  const seekBarRef = useRef<HTMLDivElement>(null);
+  const scrubbing = useRef(false);
+
+  const [folderDefaultSpeed, setFolderDefaultSpeedState] = useState<number | null>(null);
+  useEffect(() => {
+    setFolderDefaultSpeedState(track ? getFolderSpeed(track.folder) : null);
+  }, [track]);
+
+  // Up Next drag-to-reorder.
+  const [queueDragPos, setQueueDragPos] = useState<number | null>(null);
+  const [queueOverIndex, setQueueOverIndex] = useState<number | null>(null);
+  const queueRowRefs = useRef<Map<number, HTMLElement>>(new Map());
+  const queueRectsRef = useRef<{ pos: number; top: number; height: number }[]>([]);
+
+  function beginQueueDrag(pos: number, orderLength: number) {
+    queueRectsRef.current = Array.from({ length: orderLength }, (_, i) => {
+      const el = queueRowRefs.current.get(i);
+      const rect = el?.getBoundingClientRect();
+      return { pos: i, top: rect?.top ?? 0, height: rect?.height ?? 0 };
+    });
+    setQueueDragPos(pos);
+    setQueueOverIndex(pos);
+  }
+  function queueDragMove(clientY: number) {
+    const rects = queueRectsRef.current;
+    let idx = rects.length - 1;
+    for (let i = 0; i < rects.length; i++) {
+      if (clientY < rects[i].top + rects[i].height / 2) {
+        idx = i;
+        break;
+      }
+    }
+    setQueueOverIndex(idx);
+  }
+  function endQueueDrag() {
+    if (queueDragPos !== null && queueOverIndex !== null && queueDragPos !== queueOverIndex) {
+      onReorderQueue(queueDragPos, queueOverIndex);
+    }
+    setQueueDragPos(null);
+    setQueueOverIndex(null);
+  }
+  const queueDragMoveRef = useRef(queueDragMove);
+  queueDragMoveRef.current = queueDragMove;
+  const endQueueDragRef = useRef(endQueueDrag);
+  endQueueDragRef.current = endQueueDrag;
+
+  useEffect(() => {
+    if (queueDragPos === null) return;
+    const onMove = (e: PointerEvent) => queueDragMoveRef.current(e.clientY);
+    const onUp = () => endQueueDragRef.current();
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queueDragPos]);
+
   if (!track) return null;
+
+  function seekFromPointer(clientX: number) {
+    const el = seekBarRef.current;
+    if (!el || duration <= 0) return;
+    const rect = el.getBoundingClientRect();
+    const frac = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    onSeekTo(frac * duration);
+  }
+
+  function onSeekBarDown(e: React.PointerEvent) {
+    scrubbing.current = true;
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    seekFromPointer(e.clientX);
+  }
+  function onSeekBarMove(e: React.PointerEvent) {
+    if (!scrubbing.current) return;
+    seekFromPointer(e.clientX);
+  }
+  function onSeekBarUp() {
+    scrubbing.current = false;
+  }
+
+  const isDefaultSpeed = folderDefaultSpeed !== null && Math.abs(folderDefaultSpeed - speed) < 0.001;
+  function toggleFolderDefaultSpeed() {
+    if (isDefaultSpeed) {
+      clearFolderSpeed(track!.folder);
+      setFolderDefaultSpeedState(null);
+    } else {
+      setFolderSpeed(track!.folder, speed);
+      setFolderDefaultSpeedState(speed);
+    }
+  }
 
   const pct = duration > 0 ? (time / duration) * 100 : 0;
   const hasQueue = order.length > 1;
@@ -213,18 +325,30 @@ export function Player({
           </div>
 
           <div className="mb-6 space-y-2">
-            <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-surface-high">
-              <div className="absolute h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
-              <input
-                className="absolute inset-0 z-10 w-full cursor-pointer opacity-0"
-                type="range"
-                min={0}
-                max={duration || 0}
-                step={1}
-                value={Math.min(time, duration || 0)}
-                onChange={(e) => onSeekTo(Number(e.target.value))}
-                aria-label="Seek"
-              />
+            <div
+              ref={seekBarRef}
+              className="relative flex h-10 w-full touch-none items-center gap-[2px]"
+              onPointerDown={onSeekBarDown}
+              onPointerMove={onSeekBarMove}
+              onPointerUp={onSeekBarUp}
+              onPointerCancel={onSeekBarUp}
+              role="slider"
+              aria-label="Seek"
+              aria-valuemin={0}
+              aria-valuemax={duration || 0}
+              aria-valuenow={Math.min(time, duration || 0)}
+            >
+              {bars.map((h, i) => {
+                const barPct = (i / (bars.length - 1)) * 100;
+                const filled = barPct <= pct;
+                return (
+                  <div
+                    key={i}
+                    className={`pointer-events-none flex-1 rounded-full transition-colors ${filled ? "bg-primary" : "bg-surface-high"}`}
+                    style={{ height: `${h * 100}%` }}
+                  />
+                );
+              })}
             </div>
             <div className="flex justify-between text-xs text-on-surface-dim">
               <span>{fmtTime(time)}</span>
@@ -377,6 +501,21 @@ export function Player({
                     </button>
                   ))}
                 </div>
+                <button
+                  className={`mx-6 mb-4 flex items-center justify-center gap-2 rounded-xl border py-2.5 text-xs font-semibold transition-colors ${
+                    isDefaultSpeed
+                      ? "border-primary/40 bg-primary/10 text-primary"
+                      : "border-white/5 bg-surface-container-high text-on-surface-variant"
+                  }`}
+                  onClick={toggleFolderDefaultSpeed}
+                >
+                  <span className="material-symbols-outlined text-[16px]">
+                    {isDefaultSpeed ? "check_circle" : "bookmark_add"}
+                  </span>
+                  {isDefaultSpeed
+                    ? `Default for "${folderLabel(track.folder)}" — tap to unset`
+                    : `Set as default for "${folderLabel(track.folder)}"`}
+                </button>
               </>
             )}
 
@@ -421,35 +560,67 @@ export function Player({
                 <h3 className="py-3 text-center text-base font-semibold text-on-surface">
                   Up Next {shuffle && <span className="text-on-surface-dim">· Shuffled</span>}
                 </h3>
-                <ul className="overflow-y-auto pb-2">
-                  {order.map((queueIdx, pos) => {
-                    const t = queue[queueIdx];
-                    const isCurrent = pos === position;
-                    return (
-                      <li key={`${t.id}-${pos}`}>
-                        <button
-                          className={`flex w-full items-center gap-3 px-5 py-3 text-left hover:bg-white/5 ${
-                            isCurrent ? "text-primary" : "text-on-surface"
-                          }`}
-                          onClick={() => {
-                            onJumpTo(pos);
-                            setSheet(null);
-                          }}
-                        >
-                          <span className="material-symbols-outlined w-5 text-lg">
-                            {isCurrent && playing ? "graphic_eq" : "music_note"}
-                          </span>
-                          <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-                            {t.title}
-                          </span>
-                          <span className="flex-none text-xs text-on-surface-dim">
-                            {fmtTime(t.duration)}
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                {(() => {
+                  const currentQueueIdx = order[position];
+                  const displayOrder =
+                    queueDragPos !== null && queueOverIndex !== null
+                      ? (() => {
+                          const next = [...order];
+                          const [item] = next.splice(queueDragPos, 1);
+                          next.splice(queueOverIndex, 0, item);
+                          return next;
+                        })()
+                      : order;
+                  return (
+                    <ul className="overflow-y-auto pb-2">
+                      {displayOrder.map((queueIdx, pos) => {
+                        const t = queue[queueIdx];
+                        const isCurrent = queueIdx === currentQueueIdx;
+                        const isDragging = queueDragPos !== null && order[queueDragPos] === queueIdx;
+                        return (
+                          <li
+                            key={`${t.id}-${queueIdx}`}
+                            ref={(el) => {
+                              if (el) queueRowRefs.current.set(pos, el);
+                              else queueRowRefs.current.delete(pos);
+                            }}
+                            className={`flex w-full items-center gap-1 px-3 hover:bg-white/5 ${
+                              isCurrent ? "text-primary" : "text-on-surface"
+                            } ${isDragging ? "opacity-50" : ""}`}
+                          >
+                            <button
+                              className="flex h-10 w-8 flex-none touch-none items-center justify-center text-on-surface-dim active:cursor-grabbing"
+                              onPointerDown={(e) => {
+                                e.preventDefault();
+                                beginQueueDrag(pos, order.length);
+                              }}
+                              aria-label={`Drag to reorder ${t.title}`}
+                            >
+                              <span className="material-symbols-outlined text-lg">drag_indicator</span>
+                            </button>
+                            <button
+                              className="flex min-w-0 flex-1 items-center gap-3 py-3 pr-2 text-left"
+                              onClick={() => {
+                                onJumpTo(pos);
+                                setSheet(null);
+                              }}
+                            >
+                              <span className="material-symbols-outlined w-5 text-lg">
+                                {isCurrent && playing ? "graphic_eq" : "music_note"}
+                              </span>
+                              <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                                {t.title}
+                              </span>
+                              <span className="flex-none text-xs text-on-surface-dim">
+                                {fmtTime(t.duration)}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  );
+                })()}
               </>
             )}
           </div>

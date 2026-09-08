@@ -91,6 +91,7 @@ export default function App() {
     next: playNext,
     prev: playPrev,
     jumpTo,
+    reorderQueue,
     toggleShuffle,
     cycleLoop,
     toggle,
@@ -345,6 +346,7 @@ export default function App() {
           onNext={playNext}
           onPrev={playPrev}
           onJumpTo={jumpTo}
+          onReorderQueue={reorderQueue}
           onToggleShuffle={toggleShuffle}
           onCycleLoop={cycleLoop}
         />
@@ -605,6 +607,7 @@ export default function App() {
         onNext={playNext}
         onPrev={playPrev}
         onJumpTo={jumpTo}
+        onReorderQueue={reorderQueue}
         onToggleShuffle={toggleShuffle}
         onCycleLoop={cycleLoop}
       />

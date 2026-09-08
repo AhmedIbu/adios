@@ -3,6 +3,7 @@ import type { Track, Folder } from "../lib/types";
 import { folderLabel, fmtTime } from "../lib/types";
 import type { FolderRow } from "../lib/supabase";
 import { vibrate } from "../lib/haptics";
+import { applyFolderOrder, moveFolderTo } from "../lib/folderOrder";
 
 interface Props {
   tracks: Track[];
@@ -201,8 +202,94 @@ export function Library({
   const [cleanupDismissedDay, setCleanupDismissedDay] = useState<string | null>(() =>
     loadCleanupDismissedDay()
   );
+  const [reorderingFolders, setReorderingFolders] = useState(false);
+  const [folderOrderVersion, setFolderOrderVersion] = useState(0);
+  const [folderDragId, setFolderDragId] = useState<string | null>(null);
+  const [folderOverIndex, setFolderOverIndex] = useState<number | null>(null);
+  const folderTileRefs = useRef<Map<string, HTMLElement>>(new Map());
+  const folderRectsRef = useRef<{ id: string; cx: number; cy: number }[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
   const bindLongPress = useLongPressBinder();
+
+  // Custom per-device folder order (drag to reorder while in "reorder" mode).
+  const orderedFolders = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    folderOrderVersion; // recompute after a reorder persists (localStorage isn't reactive)
+    const order = applyFolderOrder(folders.map((f) => f.name));
+    return order.map((name) => folders.find((f) => f.name === name)!).filter(Boolean);
+  }, [folders, folderOrderVersion]);
+
+  const displayedFolders =
+    folderDragId !== null && folderOverIndex !== null
+      ? (() => {
+          const fromIdx = orderedFolders.findIndex((f) => f.id === folderDragId);
+          if (fromIdx === -1) return orderedFolders;
+          const next = [...orderedFolders];
+          const [item] = next.splice(fromIdx, 1);
+          next.splice(folderOverIndex, 0, item);
+          return next;
+        })()
+      : orderedFolders;
+
+  function beginFolderDrag(id: string) {
+    folderRectsRef.current = orderedFolders.map((f) => {
+      const el = folderTileRefs.current.get(f.id);
+      const rect = el?.getBoundingClientRect();
+      return {
+        id: f.id,
+        cx: rect ? rect.left + rect.width / 2 : 0,
+        cy: rect ? rect.top + rect.height / 2 : 0
+      };
+    });
+    setFolderDragId(id);
+    setFolderOverIndex(orderedFolders.findIndex((f) => f.id === id));
+  }
+
+  function folderDragMove(clientX: number, clientY: number) {
+    const rects = folderRectsRef.current;
+    let best = 0;
+    let bestDist = Infinity;
+    rects.forEach((r, i) => {
+      const d = Math.hypot(clientX - r.cx, clientY - r.cy);
+      if (d < bestDist) {
+        bestDist = d;
+        best = i;
+      }
+    });
+    setFolderOverIndex(best);
+  }
+
+  function endFolderDrag() {
+    if (folderDragId !== null && folderOverIndex !== null) {
+      const fromIdx = orderedFolders.findIndex((f) => f.id === folderDragId);
+      if (fromIdx !== -1 && fromIdx !== folderOverIndex) {
+        moveFolderTo(folders.map((f) => f.name), orderedFolders[fromIdx].name, folderOverIndex);
+        setFolderOrderVersion((v) => v + 1);
+      }
+    }
+    setFolderDragId(null);
+    setFolderOverIndex(null);
+  }
+
+  const folderDragMoveRef = useRef(folderDragMove);
+  folderDragMoveRef.current = folderDragMove;
+  const endFolderDragRef = useRef(endFolderDrag);
+  endFolderDragRef.current = endFolderDrag;
+
+  useEffect(() => {
+    if (folderDragId === null) return;
+    const onMove = (e: PointerEvent) => folderDragMoveRef.current(e.clientX, e.clientY);
+    const onUp = () => endFolderDragRef.current();
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [folderDragId]);
 
   // Offline copies kept for a track that hasn't been played in a while — a
   // candidate for freeing up local device storage.
@@ -395,34 +482,65 @@ export function Library({
 
       {/* Folder quick-access grid */}
       <div className="mb-6">
-        <h2 className="font-headline mb-3 text-xl tracking-tight text-on-surface">Folders</h2>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-headline text-xl tracking-tight text-on-surface">Folders</h2>
+          {orderedFolders.length > 1 && (
+            <button
+              className="rounded-full px-3 py-1 text-xs font-semibold text-on-surface-variant transition-colors hover:bg-surface-container-high"
+              onClick={() => setReorderingFolders((v) => !v)}
+            >
+              {reorderingFolders ? "Done" : "Reorder"}
+            </button>
+          )}
+        </div>
         <div className="grid grid-cols-3 gap-3">
-          {folders.map((folder) => {
+          {displayedFolders.map((folder) => {
             const f = folder.name;
             const style = styleFor(f);
             const count = tracks.filter((t) => t.folder === f).length;
             const on = filter === f;
             const popped = poppedFolderId === folder.id;
+            const isDragging = folderDragId === folder.id;
+            const tileClass = `group relative flex aspect-square touch-none flex-col items-center justify-end overflow-hidden rounded-card bg-surface-container-high p-3 shadow-md ring-1 ring-white/5 transition-transform duration-150 ${
+              on ? "ring-2 ring-primary" : ""
+            } ${isDragging ? "z-10 scale-105 opacity-80" : popped ? "animate-long-press-pop" : "active:scale-[0.97]"}`;
             return (
-              <button
+              <div
                 key={folder.id}
-                className={`group relative flex aspect-square touch-none flex-col items-center justify-end overflow-hidden rounded-card bg-surface-container-high p-3 shadow-md ring-1 ring-white/5 transition-transform duration-150 ${
-                  on ? "ring-2 ring-primary" : ""
-                } ${popped ? "animate-long-press-pop" : "active:scale-[0.97]"}`}
-                {...bindLongPress(
-                  () => {
-                    vibrate(15);
-                    setPoppedFolderId(folder.id);
-                    window.setTimeout(() => setPoppedFolderId(null), 350);
-                    setFolderMenu(folder);
-                  },
-                  () => (playedOnly ? onBrowseFolder?.(f) : setFilter(on ? "all" : f))
-                )}
+                ref={(el) => {
+                  if (el) folderTileRefs.current.set(folder.id, el);
+                  else folderTileRefs.current.delete(folder.id);
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label={`${folderLabel(f)}, ${count} ${count === 1 ? "item" : "items"}`}
+                className={tileClass}
+                {...(reorderingFolders
+                  ? {
+                      onPointerDown: (e: React.PointerEvent) => {
+                        e.preventDefault();
+                        beginFolderDrag(folder.id);
+                      }
+                    }
+                  : bindLongPress(
+                      () => {
+                        vibrate(15);
+                        setPoppedFolderId(folder.id);
+                        window.setTimeout(() => setPoppedFolderId(null), 350);
+                        setFolderMenu(folder);
+                      },
+                      () => (playedOnly ? onBrowseFolder?.(f) : setFilter(on ? "all" : f))
+                    ))}
               >
                 <div
                   className={`animate-float pointer-events-none absolute -top-6 -right-6 h-20 w-20 rounded-full blur-[30px] ${style.glow}`}
                   style={{ animationDelay: style.delay }}
                 />
+                {reorderingFolders && (
+                  <span className="material-symbols-outlined pointer-events-none absolute top-1.5 right-1.5 z-10 text-sm text-on-surface-variant">
+                    drag_indicator
+                  </span>
+                )}
                 <div className="relative z-10 mb-auto flex h-10 w-10 items-center justify-center rounded-full bg-surface-container-lowest shadow-inner">
                   <span className={`material-symbols-outlined is-filled text-xl ${style.iconColor}`}>
                     {style.icon}
@@ -434,7 +552,7 @@ export function Library({
                 <span className="relative z-10 w-full truncate text-left text-[10px] text-on-surface-variant">
                   {count} {count === 1 ? "item" : "items"}
                 </span>
-              </button>
+              </div>
             );
           })}
         </div>
@@ -478,7 +596,7 @@ export function Library({
             >
               All
             </button>
-            {folders.map((f) => (
+            {orderedFolders.map((f) => (
               <button
                 key={f.id}
                 className={`flex-none rounded-full px-4 py-1.5 text-xs font-medium whitespace-nowrap transition-colors duration-200 ${

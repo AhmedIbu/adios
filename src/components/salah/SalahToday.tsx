@@ -6,6 +6,7 @@ import {
   buildLogMap,
   currentStreak,
   prayedCount,
+  tahajjudStreak,
   toDayString,
   weekComparison
 } from "../../lib/salah";
@@ -14,6 +15,7 @@ import type { Intention } from "../../lib/journal";
 import { dailyHadith, dailyQuote } from "../../lib/reminders";
 import { PRAYER_META } from "./meta";
 import { SalahBreathing } from "./SalahBreathing";
+import { SalahIntentionRecorder } from "./SalahIntentionRecorder";
 
 interface Props {
   logs: PrayerLog[];
@@ -94,8 +96,14 @@ export function SalahToday({
   const dayEntry = map.get(todayStr);
   const prayed = prayedCount(dayEntry);
   const streak = useMemo(() => currentStreak(map, new Date()), [map]);
+  const nightStreak = useMemo(() => tahajjudStreak(logs, new Date()), [logs]);
   const weekCmp = useMemo(() => weekComparison(map, new Date()), [map]);
   const [breathingOpen, setBreathingOpen] = useState(false);
+  const [intentionDraft, setIntentionDraft] = useState<{ text: string; audioBlob: Blob | null }>({
+    text: "",
+    audioBlob: null
+  });
+  const [savingIntention, setSavingIntention] = useState(false);
 
   const todaysIntentions = useMemo(
     () => intentions.filter((i) => i.day === todayStr),
@@ -127,6 +135,24 @@ export function SalahToday({
     nextPrayer && todayTimes
       ? todayTimes[nextPrayer].toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
       : null;
+
+  async function saveIntention() {
+    if (!nextPrayer) return;
+    setSavingIntention(true);
+    try {
+      if (intentionDraft.text.trim()) {
+        await onSaveIntentionText(todayStr, nextPrayer, intentionDraft.text.trim());
+      } else if (intentionDraft.audioBlob) {
+        await onSaveIntentionAudio(todayStr, nextPrayer, intentionDraft.audioBlob);
+      }
+      setIntentionDraft({ text: "", audioBlob: null });
+    } catch (e) {
+      console.error(e);
+      alert("Couldn't save — check your connection.");
+    } finally {
+      setSavingIntention(false);
+    }
+  }
 
   return (
     <section className="flex flex-col gap-6 pb-6">
@@ -276,6 +302,21 @@ export function SalahToday({
               <span className="material-symbols-outlined text-[20px]">close</span> Missed
             </button>
           </div>
+
+          {(intentionDraft.text.trim() || intentionDraft.audioBlob) && (
+            <button
+              className="relative z-10 mt-3 flex w-full items-center justify-center gap-2 rounded-full py-2.5 text-[11px] font-bold uppercase tracking-wide transition-transform active:scale-95 disabled:opacity-60"
+              style={{ background: "var(--s-secondary)", color: "var(--s-on-secondary)" }}
+              onClick={saveIntention}
+              disabled={savingIntention}
+            >
+              <span className="material-symbols-outlined text-[18px]">bookmark_add</span>
+              {savingIntention ? "Saving…" : `Save intention for ${PRAYER_LABELS[nextPrayer]}`}
+            </button>
+          )}
+          <div className="relative z-10">
+            <SalahIntentionRecorder onChange={setIntentionDraft} />
+          </div>
         </div>
       )}
 
@@ -358,6 +399,11 @@ export function SalahToday({
             <p className="text-xs" style={{ color: "var(--s-on-surface-variant)" }}>
               Voluntary Night Prayer
             </p>
+            {nightStreak > 0 && (
+              <p className="mt-1 text-xs font-bold" style={{ color: "var(--s-tertiary)" }}>
+                🌙 {nightStreak} night{nightStreak === 1 ? "" : "s"} in a row
+              </p>
+            )}
           </div>
           <div
             className="flex h-11 w-11 items-center justify-center rounded-full shadow-sm"

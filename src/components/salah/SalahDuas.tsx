@@ -5,9 +5,10 @@ interface Props {
   duas: AnsweredDua[];
   onAdd: (text: string) => Promise<void>;
   onMarkAnswered: (id: string) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
 }
 
-export function SalahDuas({ duas, onAdd, onMarkAnswered }: Props) {
+export function SalahDuas({ duas, onAdd, onMarkAnswered, onDelete }: Props) {
   const [text, setText] = useState("");
   const [adding, setAdding] = useState(false);
   const [showAnswered, setShowAnswered] = useState(false);
@@ -66,18 +67,31 @@ export function SalahDuas({ duas, onAdd, onMarkAnswered }: Props) {
               className="flex items-center justify-between rounded-xl p-3"
               style={{ background: "var(--s-surface-container-lowest)" }}
             >
-              <p className="text-sm" style={{ color: "var(--s-on-surface)" }}>
+              <p className="min-w-0 flex-1 text-sm" style={{ color: "var(--s-on-surface)" }}>
                 {d.text}
               </p>
-              <button
-                className="flex h-8 w-8 flex-none items-center justify-center rounded-full transition-colors active:scale-90"
-                style={{ color: "var(--s-on-surface-variant)" }}
-                onClick={() => onMarkAnswered(d.id)}
-                aria-label="Mark as answered"
-                title="Mark as answered"
-              >
-                <span className="material-symbols-outlined text-lg">check_circle</span>
-              </button>
+              <div className="flex flex-none items-center gap-1">
+                <button
+                  className="flex h-8 w-8 items-center justify-center rounded-full transition-colors active:scale-90"
+                  style={{ color: "var(--s-on-surface-variant)" }}
+                  onClick={() => onMarkAnswered(d.id)}
+                  aria-label="Mark as answered"
+                  title="Mark as answered"
+                >
+                  <span className="material-symbols-outlined text-lg">check_circle</span>
+                </button>
+                <button
+                  className="flex h-8 w-8 items-center justify-center rounded-full transition-colors active:scale-90"
+                  style={{ color: "var(--s-on-surface-variant)" }}
+                  onClick={() => {
+                    if (confirm("Remove this dua?")) onDelete(d.id);
+                  }}
+                  aria-label="Delete"
+                  title="Delete"
+                >
+                  <span className="material-symbols-outlined text-lg">close</span>
+                </button>
+              </div>
             </div>
           ))}
         </div>

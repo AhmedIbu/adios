@@ -13,6 +13,7 @@ import {
 import type { AnsweredDua, Intention, Reflection } from "../../lib/journal";
 import {
   addDua,
+  deleteDua,
   intentionAudioUrl,
   listAnsweredDuas,
   listIntentions,
@@ -111,6 +112,18 @@ export function SalahView({ onSwitchApp, theme, onToggleTheme }: Props) {
     setDuas((ds) => ds.map((d) => (d.id === id ? saved : d)));
   }, []);
 
+  const handleDeleteDua = useCallback(async (id: string) => {
+    const removed = duas.find((d) => d.id === id);
+    setDuas((ds) => ds.filter((d) => d.id !== id));
+    try {
+      await deleteDua(id);
+    } catch (e) {
+      console.error(e);
+      if (removed) setDuas((ds) => [removed, ...ds]);
+      alert("Couldn't delete — check your connection.");
+    }
+  }, [duas]);
+
   const handleSaveIntentionText = useCallback(async (day: string, prayer: Prayer, text: string) => {
     const saved = await saveIntentionText(day, prayer, text);
     setIntentions((is) => [saved, ...is.filter((i) => !(i.day === day && i.prayer === prayer))]);
@@ -177,14 +190,17 @@ export function SalahView({ onSwitchApp, theme, onToggleTheme }: Props) {
     }
   }, []);
 
-  const handleLogQada = useCallback(async (prayer: Prayer) => {
+  /** Returns whether the log actually saved, so the caller can decide whether to confirm success. */
+  const handleLogQada = useCallback(async (prayer: Prayer): Promise<boolean> => {
     try {
       const saved = await logQada(prayer);
       setQadaLogs((qs) => [saved, ...qs]);
       vibrate(15);
+      return true;
     } catch (e) {
       console.error(e);
       alert("Couldn't log — check your connection.");
+      return false;
     }
   }, []);
 
@@ -314,6 +330,7 @@ export function SalahView({ onSwitchApp, theme, onToggleTheme }: Props) {
                     duas={duas}
                     onAddDua={handleAddDua}
                     onMarkDuaAnswered={handleMarkDuaAnswered}
+                    onDeleteDua={handleDeleteDua}
                     settings={settings}
                     onSaveSettings={handleSaveSettings}
                   />

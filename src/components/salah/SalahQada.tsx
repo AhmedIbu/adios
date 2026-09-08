@@ -6,15 +6,15 @@ import { PRAYER_META } from "./meta";
 interface Props {
   logs: PrayerLog[];
   qadaLogs: QadaLog[];
-  onLogQada: (prayer: Prayer) => void;
+  onLogQada: (prayer: Prayer) => Promise<boolean>;
 }
 
 export function SalahQada({ logs, qadaLogs, onLogQada }: Props) {
   const [confirming, setConfirming] = useState(false);
 
-  function handleLog(p: Prayer) {
-    onLogQada(p);
-    setConfirming(true);
+  async function handleLog(p: Prayer) {
+    const ok = await onLogQada(p);
+    if (ok) setConfirming(true);
   }
 
   const owed = useMemo(() => qadaOwed(logs, qadaLogs), [logs, qadaLogs]);

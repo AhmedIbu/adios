@@ -11,6 +11,7 @@ interface Props {
   duas: AnsweredDua[];
   onAddDua: (text: string) => Promise<void>;
   onMarkDuaAnswered: (id: string) => Promise<void>;
+  onDeleteDua: (id: string) => Promise<void>;
 }
 
 type Mode = "explore" | "saved";

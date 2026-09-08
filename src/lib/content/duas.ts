@@ -93,14 +93,3 @@ export const DUAS: Dua[] = [
     source: "Abu Dawud & Tirmidhi"
   }
 ];
-
-/** Same dua for the whole calendar week (Mon-start), rotating through the library. */
-export function weeklyDua(dayString: string): Dua {
-  const d = new Date(dayString + "T00:00:00");
-  const weekOffset = (d.getDay() + 6) % 7;
-  const weekStart = new Date(d);
-  weekStart.setDate(d.getDate() - weekOffset);
-  // ISO-ish week number, coarse but stable and deterministic for rotation purposes.
-  const weekNumber = Math.floor(weekStart.getTime() / (7 * 86400000));
-  return DUAS[((weekNumber % DUAS.length) + DUAS.length) % DUAS.length];
-}

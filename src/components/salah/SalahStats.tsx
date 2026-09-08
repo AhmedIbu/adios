@@ -136,7 +136,7 @@ export function SalahStats({ logs, qadaLogs }: Props) {
             className="rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-widest"
             style={{ background: "var(--s-secondary-container)", color: "var(--s-on-secondary-container)" }}
           >
-            This week
+            Last 7 days
           </span>
         </div>
         {/* Bars get their own definite-height row (items-stretch, the flex
@@ -211,9 +211,8 @@ export function SalahStats({ logs, qadaLogs }: Props) {
                   stroke={seg.color}
                   strokeWidth="4"
                   strokeLinecap="round"
-                  strokeDasharray={donutCircumference}
+                  strokeDasharray={`${(seg.to - seg.from) * donutCircumference} ${donutCircumference}`}
                   strokeDashoffset={-seg.from * donutCircumference}
-                  style={{ strokeDasharray: `${(seg.to - seg.from) * donutCircumference} ${donutCircumference}` }}
                 />
               ))}
             </svg>
@@ -222,7 +221,7 @@ export function SalahStats({ logs, qadaLogs }: Props) {
                 {totalOwed}
               </span>
               <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--s-on-surface-variant)" }}>
-                {totalOwed === 1 ? "Remaining" : "Remaining"}
+                Remaining
               </span>
             </div>
           </div>

@@ -67,19 +67,3 @@ export function computeDayTimes(
     isha: times.isha
   };
 }
-
-/** Minutes actual is after (+) or before (-) scheduled. */
-export function deltaMinutes(scheduled: Date, actual: Date): number {
-  return Math.round((actual.getTime() - scheduled.getTime()) / 60000);
-}
-
-export function formatDelta(min: number): string {
-  if (Math.abs(min) < 1) return "right on time";
-  const abs = Math.abs(min);
-  const h = Math.floor(abs / 60);
-  const m = abs % 60;
-  const parts: string[] = [];
-  if (h > 0) parts.push(`${h}h`);
-  if (m > 0 || h === 0) parts.push(`${m}m`);
-  return `${parts.join(" ")} ${min > 0 ? "after" : "before"}`;
-}

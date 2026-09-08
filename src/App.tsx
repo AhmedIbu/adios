@@ -294,7 +294,16 @@ export default function App() {
   );
 
   if (session === undefined) {
-    return <main className="min-h-dvh bg-bg" aria-busy="true" />;
+    return (
+      <main
+        className={`flex min-h-dvh items-center justify-center bg-bg ${DEFAULT_APP === "salah" ? "salah-app" : ""}`}
+        aria-busy="true"
+      >
+        <span className="material-symbols-outlined animate-spin text-3xl text-primary">
+          progress_activity
+        </span>
+      </main>
+    );
   }
   if (!session) {
     return <Gate />;

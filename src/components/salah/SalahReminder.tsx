@@ -18,6 +18,7 @@ interface Props {
   duas: AnsweredDua[];
   onAddDua: (text: string) => Promise<void>;
   onMarkDuaAnswered: (id: string) => Promise<void>;
+  onDeleteDua: (id: string) => Promise<void>;
 }
 
 export function SalahReminder({
@@ -25,7 +26,8 @@ export function SalahReminder({
   onSaveReflection,
   duas,
   onAddDua,
-  onMarkDuaAnswered
+  onMarkDuaAnswered,
+  onDeleteDua
 }: Props) {
   const [copied, setCopied] = useState(false);
   const today = new Date();
@@ -87,7 +89,7 @@ export function SalahReminder({
       </div>
 
       <SalahReflection reflections={reflections} onSave={onSaveReflection} />
-      <SalahDuas duas={duas} onAdd={onAddDua} onMarkAnswered={onMarkDuaAnswered} />
+      <SalahDuas duas={duas} onAdd={onAddDua} onMarkAnswered={onMarkDuaAnswered} onDelete={onDeleteDua} />
     </section>
   );
 }

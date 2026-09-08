@@ -24,6 +24,7 @@ import {
   saveReflection
 } from "../../lib/journal";
 import { vibrate } from "../../lib/haptics";
+import { usePullToRefresh } from "../../hooks/usePullToRefresh";
 import { SalahToday } from "./SalahToday";
 import { SalahHistory } from "./SalahHistory";
 import { SalahQada } from "./SalahQada";
@@ -93,6 +94,26 @@ export function SalahView({ onSwitchApp, theme, onToggleTheme }: Props) {
       .then(setIntentions)
       .catch((e) => console.error(e));
   }, []);
+
+  const refreshData = useCallback(async () => {
+    try {
+      const [p, q] = await Promise.all([listPrayerLogs(), listQadaLogs()]);
+      setLogs(p);
+      setQadaLogs(q);
+    } catch (e) {
+      console.error(e);
+    }
+    Promise.all([getSalahSettings(), listReflections(), listAnsweredDuas(), listIntentions()])
+      .then(([s, r, d, i]) => {
+        setSettings(s);
+        setReflections(r);
+        setDuas(d);
+        setIntentions(i);
+      })
+      .catch((e) => console.error(e));
+  }, []);
+
+  const pullToRefresh = usePullToRefresh(refreshData);
 
   const handleSaveSettings = useCallback(async (next: SalahSettingsRow) => {
     const saved = await upsertSalahSettings(next);
@@ -269,8 +290,35 @@ export function SalahView({ onSwitchApp, theme, onToggleTheme }: Props) {
           paddingTop: "calc(4rem + env(safe-area-inset-top, 0px))",
           paddingBottom: "calc(6.5rem + env(safe-area-inset-bottom, 0px))"
         }}
+        {...pullToRefresh.handlers}
       >
-        <div className="animate-app-in pt-6">
+        {(pullToRefresh.pullY > 0 || pullToRefresh.refreshing) && (
+          <div
+            className="pointer-events-none absolute left-1/2 z-10 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full shadow-md"
+            style={{
+              top: "calc(4rem + env(safe-area-inset-top, 0px) + 0.5rem)",
+              background: "var(--s-surface-container-high)",
+              opacity: Math.min(1, pullToRefresh.pullY / 64)
+            }}
+          >
+            <span
+              className={`material-symbols-outlined text-lg ${pullToRefresh.refreshing ? "animate-spin" : ""}`}
+              style={{
+                color: "var(--s-primary)",
+                transform: !pullToRefresh.refreshing ? `rotate(${pullToRefresh.pullY * 3}deg)` : undefined
+              }}
+            >
+              refresh
+            </span>
+          </div>
+        )}
+        <div
+          className="animate-app-in pt-6"
+          style={{
+            transform: pullToRefresh.pullY > 0 ? `translateY(${pullToRefresh.pullY}px)` : undefined,
+            transition: pullToRefresh.pullY === 0 ? "transform 0.2s ease-out" : "none"
+          }}
+        >
           {!loading && !loadError && (
             <SalahPrayerReminderBanner logs={logs} settings={settings} onSetStatus={handleSetStatus} />
           )}

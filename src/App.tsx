@@ -10,6 +10,7 @@ import {
   markPlayed,
   getStorageUsage,
   seedDefaultFoldersIfEmpty,
+  listFolders,
   createFolder,
   renameFolder,
   deleteFolder,
@@ -26,6 +27,7 @@ import {
 import type { Track } from "./lib/types";
 import { folderLabel } from "./lib/types";
 import { usePlayer } from "./hooks/usePlayer";
+import { usePullToRefresh } from "./hooks/usePullToRefresh";
 import { Gate } from "./components/Gate";
 import { ResetPassword } from "./components/ResetPassword";
 import { Player } from "./components/Player";
@@ -202,6 +204,26 @@ export default function App() {
       .then(setStorageBytes)
       .catch((e) => console.error(e));
   }, [session]);
+
+  const refreshLibrary = useCallback(async () => {
+    try {
+      const [ts, fs, off, bytes] = await Promise.all([
+        listTracks(),
+        listFolders(),
+        loadOfflineIds(),
+        getStorageUsage()
+      ]);
+      setTracks(ts);
+      cacheTrackList(ts);
+      setFolders(fs);
+      setOffline(off);
+      setStorageBytes(bytes);
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  const pullToRefresh = usePullToRefresh(refreshLibrary);
 
   const handleKeepOffline = useCallback(async (t: Track, durationMs: number | null) => {
     setSaving((s) => new Set(s).add(t.id));
@@ -593,7 +615,27 @@ export default function App() {
         </div>
       </nav>
 
-      <main className="animate-app-in space-y-6 px-4 pt-4">
+      <main
+        className="animate-app-in relative space-y-6 px-4 pt-4"
+        style={{
+          transform: pullToRefresh.pullY > 0 ? `translateY(${pullToRefresh.pullY}px)` : undefined,
+          transition: pullToRefresh.pullY === 0 ? "transform 0.2s ease-out" : "none"
+        }}
+        {...(view !== "upload" ? pullToRefresh.handlers : {})}
+      >
+        {view !== "upload" && (pullToRefresh.pullY > 0 || pullToRefresh.refreshing) && (
+          <div
+            className="pointer-events-none absolute left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-surface-container-high shadow-md"
+            style={{ top: "calc(env(safe-area-inset-top, 0px) + 4.25rem)", opacity: Math.min(1, pullToRefresh.pullY / 64) }}
+          >
+            <span
+              className={`material-symbols-outlined text-lg text-primary ${pullToRefresh.refreshing ? "animate-spin" : ""}`}
+              style={!pullToRefresh.refreshing ? { transform: `rotate(${pullToRefresh.pullY * 3}deg)` } : undefined}
+            >
+              refresh
+            </span>
+          </div>
+        )}
         <Suspense fallback={<div className="animate-pulse rounded-2xl bg-surface-container" style={{ height: "60vh" }} />}>
         {view === "home" && (
           <Library

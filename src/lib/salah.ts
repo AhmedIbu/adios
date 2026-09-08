@@ -239,6 +239,47 @@ export function missedCounts(map: LogMap, from: Date, to: Date): Record<Prayer, 
   return counts;
 }
 
+/** On-time rate (on_time / (on_time+qada+missed)) per prayer, within from/to (inclusive). */
+export function perPrayerOnTimeRate(
+  logs: PrayerLog[],
+  from: Date,
+  to: Date
+): Record<CorePrayer, number> {
+  const fromStr = toDayString(from);
+  const toStr = toDayString(to);
+  const onTime = Object.fromEntries(PRAYERS.map((p) => [p, 0])) as Record<CorePrayer, number>;
+  const total = Object.fromEntries(PRAYERS.map((p) => [p, 0])) as Record<CorePrayer, number>;
+  for (const l of logs) {
+    if (l.day < fromStr || l.day > toStr) continue;
+    if (!(PRAYERS as readonly string[]).includes(l.prayer)) continue;
+    const p = l.prayer as CorePrayer;
+    total[p]++;
+    if (l.status === "on_time") onTime[p]++;
+  }
+  const rate = {} as Record<CorePrayer, number>;
+  for (const p of PRAYERS) rate[p] = total[p] > 0 ? onTime[p] / total[p] : 0;
+  return rate;
+}
+
+/** Completion % for each of the last `months` calendar months, oldest first. */
+export function monthlyCompletionTrend(
+  map: LogMap,
+  today: Date,
+  months: number
+): { label: string; pct: number }[] {
+  const result: { label: string; pct: number }[] = [];
+  for (let i = months - 1; i >= 0; i--) {
+    const from = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    const to = i === 0 ? today : new Date(today.getFullYear(), today.getMonth() - i + 1, 0);
+    const stats = completionStats(map, from, to);
+    result.push({
+      label: from.toLocaleDateString("en-US", { month: "short" }),
+      pct: stats.total > 0 ? (stats.prayed / stats.total) * 100 : 0
+    });
+  }
+  return result;
+}
+
 /** Count of logged prayers by status within from/to (inclusive), across all prayers. */
 export function statusBreakdown(
   logs: PrayerLog[],

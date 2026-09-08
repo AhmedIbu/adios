@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import type { PrayerLog, QadaLog } from "../../lib/salah";
+import { useMemo, useRef, useState } from "react";
+import type { CorePrayer, PrayerLog, QadaLog } from "../../lib/salah";
 import {
   PRAYERS,
   PRAYER_LABELS,
@@ -10,6 +10,8 @@ import {
   longestStreak,
   missedCounts,
   monthComparison,
+  monthlyCompletionTrend,
+  perPrayerOnTimeRate,
   prayedCount,
   qadaOwed,
   sunnahStats,
@@ -120,8 +122,182 @@ export function SalahStats({ logs, qadaLogs }: Props) {
   const weekCmp = useMemo(() => weekComparison(map, new Date()), [map]);
   const monthCmp = useMemo(() => monthComparison(map, new Date()), [map]);
 
+  const trend = useMemo(() => monthlyCompletionTrend(map, new Date(), 6), [map]);
+  const trendPath = useMemo(() => {
+    if (trend.length < 2) return "";
+    const w = 280;
+    const h = 56;
+    const stepX = w / (trend.length - 1);
+    return trend
+      .map((t, i) => `${i === 0 ? "M" : "L"} ${(i * stepX).toFixed(1)} ${(h - (t.pct / 100) * h).toFixed(1)}`)
+      .join(" ");
+  }, [trend]);
+
+  const onTimeRate = useMemo(() => {
+    const today = new Date();
+    const from = new Date(today.getFullYear(), today.getMonth(), 1);
+    return perPrayerOnTimeRate(logs, from, today);
+  }, [logs]);
+
+  const milestones = useMemo(() => {
+    const everMissed = logs.some((l) => l.status === "missed");
+    const allOnTime = logs.length > 0 && PRAYERS.every((p) => onTimeRate[p] >= 0.8);
+    return [
+      {
+        key: "streak7",
+        title: "7-Day Streak",
+        icon: "workspace_premium",
+        achieved: longest >= 7,
+        doneLabel: `Longest streak: ${longest} days`,
+        lockedLabel: `${7 - longest} more day${7 - longest === 1 ? "" : "s"} to go`
+      },
+      {
+        key: "streak30",
+        title: "30-Day Streak",
+        icon: "military_tech",
+        achieved: longest >= 30,
+        doneLabel: "Completed — Alhamdulillah!",
+        lockedLabel: `Longest streak: ${longest} days`
+      },
+      {
+        key: "streak100",
+        title: "100-Day Streak",
+        icon: "emoji_events",
+        achieved: longest >= 100,
+        doneLabel: "A full season of consistency — Alhamdulillah!",
+        lockedLabel: `Longest streak: ${longest} days`
+      },
+      {
+        key: "sunnah100",
+        title: "100 Sunnahs",
+        icon: "auto_awesome",
+        achieved: sunnah.prayedWithSunnah >= 100,
+        doneLabel: "Completed this month",
+        lockedLabel: `${100 - sunnah.prayedWithSunnah} more to go this month`
+      },
+      {
+        key: "qadaCleared",
+        title: "Qada Cleared",
+        icon: "task_alt",
+        achieved: everMissed && totalOwed === 0,
+        doneLabel: "All caught up — nothing owed",
+        lockedLabel: `${totalOwed} prayer${totalOwed === 1 ? "" : "s"} left`
+      },
+      {
+        key: "qada50",
+        title: "50 Qada Logged",
+        icon: "history_edu",
+        achieved: qadaLogs.length >= 50,
+        doneLabel: `${qadaLogs.length} logged in total`,
+        lockedLabel: `${qadaLogs.length} of 50 logged`
+      },
+      {
+        key: "onTime",
+        title: "On-Time Master",
+        icon: "schedule",
+        achieved: allOnTime,
+        doneLabel: "80%+ on-time across every prayer this month",
+        lockedLabel: "Reach 80% on-time for every prayer this month"
+      }
+    ];
+  }, [longest, sunnah, totalOwed, qadaLogs, logs, onTimeRate]);
+
+  const [sharing, setSharing] = useState(false);
+  const shareCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  async function shareProgress() {
+    const canvas = shareCanvasRef.current;
+    if (!canvas) return;
+    setSharing(true);
+    try {
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      const W = 800;
+      const H = 1000;
+      canvas.width = W;
+      canvas.height = H;
+
+      const styles = getComputedStyle(document.documentElement);
+      const bg = styles.getPropertyValue("--s-surface").trim() || "#121412";
+      const surface = styles.getPropertyValue("--s-surface-container").trim() || "#1e201e";
+      const primary = styles.getPropertyValue("--s-primary").trim() || "#b2cdb6";
+      const onSurface = styles.getPropertyValue("--s-on-surface").trim() || "#e2e3df";
+      const onVariant = styles.getPropertyValue("--s-on-surface-variant").trim() || "#c2c8c1";
+
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.fillStyle = onVariant;
+      ctx.font = "600 22px Inter, sans-serif";
+      ctx.fillText("MY SALAH PROGRESS", 60, 90);
+
+      ctx.fillStyle = primary;
+      ctx.font = "400 64px 'Libre Caslon Text', serif";
+      ctx.fillText(`${streak}`, 60, 190);
+      ctx.fillStyle = onVariant;
+      ctx.font = "500 24px Inter, sans-serif";
+      ctx.fillText(streak === 1 ? "day streak" : "day streak", 200, 178);
+
+      const stats: [string, string][] = [
+        ["Completion", `${pct.toFixed(0)}%`],
+        ["Longest streak", `${longest} days`],
+        ["Qada remaining", `${totalOwed}`],
+        ["Sunnah this month", `${sunnah.prayedWithSunnah}`]
+      ];
+      let y = 300;
+      for (const [label, value] of stats) {
+        ctx.fillStyle = surface;
+        ctx.beginPath();
+        ctx.roundRect(60, y, W - 120, 100, 20);
+        ctx.fill();
+        ctx.fillStyle = onVariant;
+        ctx.font = "500 20px Inter, sans-serif";
+        ctx.fillText(label.toUpperCase(), 90, y + 40);
+        ctx.fillStyle = onSurface;
+        ctx.font = "600 36px Inter, sans-serif";
+        ctx.fillText(value, 90, y + 78);
+        y += 120;
+      }
+
+      ctx.fillStyle = onVariant;
+      ctx.font = "400 18px Inter, sans-serif";
+      ctx.fillText(new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }), 60, H - 50);
+
+      const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (!blob) return;
+      const file = new File([blob], "salah-progress.png", { type: "image/png" });
+
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: "My Salah Progress" });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "salah-progress.png";
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (e) {
+      if ((e as Error)?.name !== "AbortError") console.error(e);
+    } finally {
+      setSharing(false);
+    }
+  }
+
   return (
     <section className="flex flex-col gap-5 pb-6">
+      <canvas ref={shareCanvasRef} className="hidden" aria-hidden="true" />
+
+      <button
+        className="flex items-center justify-center gap-2 self-end rounded-full px-4 py-2 text-[11px] font-bold uppercase tracking-widest transition-transform active:scale-95 disabled:opacity-60"
+        style={{ background: "var(--s-surface-container-high)", color: "var(--s-on-surface)" }}
+        onClick={shareProgress}
+        disabled={sharing}
+      >
+        <span className="material-symbols-outlined text-[18px]">{sharing ? "hourglass_top" : "share"}</span>
+        {sharing ? "Preparing…" : "Share progress"}
+      </button>
+
       {/* Consistency */}
       <div className="relative overflow-hidden rounded-2xl p-6 shadow-sm" style={{ background: "var(--s-surface-container)" }}>
         <div
@@ -376,6 +552,60 @@ export function SalahStats({ logs, qadaLogs }: Props) {
         </div>
       )}
 
+      {/* 6-month trend */}
+      {trend.some((t) => t.pct > 0) && (
+        <div className="rounded-2xl p-6 shadow-sm" style={{ background: "var(--s-surface-container)" }}>
+          <h3 className="mb-4 font-headline text-xl" style={{ color: "var(--s-on-surface)" }}>
+            6-Month Trend
+          </h3>
+          <svg viewBox="0 0 280 56" className="w-full" preserveAspectRatio="none">
+            <path d={trendPath} fill="none" stroke="var(--s-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div className="mt-2 flex justify-between">
+            {trend.map((t, i) => (
+              <span key={i} className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--s-on-surface-variant)" }}>
+                {t.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Per-prayer on-time rate */}
+      <div className="rounded-2xl p-6 shadow-sm" style={{ background: "var(--s-surface-container)" }}>
+        <div className="mb-6">
+          <h3 className="font-headline text-xl" style={{ color: "var(--s-on-surface)" }}>
+            On-Time by Prayer
+          </h3>
+          <p className="text-sm" style={{ color: "var(--s-on-surface-variant)" }}>
+            This month, share of prayers logged on time
+          </p>
+        </div>
+        <div className="flex flex-col gap-5">
+          {PRAYERS.map((p: CorePrayer) => {
+            const rate = Math.round(onTimeRate[p] * 100);
+            return (
+              <div key={p} className="flex flex-col gap-1.5">
+                <div className="flex items-end justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--s-on-surface)" }}>
+                    {PRAYER_LABELS[p]}
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--s-on-surface-variant)" }}>
+                    {rate}%
+                  </span>
+                </div>
+                <div className="h-3 w-full overflow-hidden rounded-full px-0.5" style={{ background: "var(--s-surface-container-high)" }}>
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${rate}%`, background: BAR_COLORS[p] }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Missed breakdown */}
       <div className="rounded-2xl p-6 shadow-sm" style={{ background: "var(--s-surface-container)" }}>
         <div className="mb-6">
@@ -414,75 +644,38 @@ export function SalahStats({ logs, qadaLogs }: Props) {
 
       {/* Milestones */}
       <div className="rounded-2xl p-6 shadow-sm" style={{ background: "var(--s-surface-container-low)" }}>
-        <h3 className="mb-4 font-headline text-xl" style={{ color: "var(--s-primary)" }}>
-          Milestones
-        </h3>
+        <div className="mb-4 flex items-end justify-between">
+          <h3 className="font-headline text-xl" style={{ color: "var(--s-primary)" }}>
+            Milestones
+          </h3>
+          <span className="text-xs font-semibold" style={{ color: "var(--s-on-surface-variant)" }}>
+            {milestones.filter((m) => m.achieved).length}/{milestones.length}
+          </span>
+        </div>
         <ul className="flex flex-col gap-4">
-          <li className="flex items-start gap-4" style={{ opacity: longest >= 7 ? 1 : 0.5 }}>
-            <div
-              className="flex h-10 w-10 flex-none items-center justify-center rounded-full"
-              style={{ background: longest >= 7 ? "var(--s-secondary-container)" : "var(--s-surface-variant)" }}
-            >
-              <span
-                className="material-symbols-outlined"
-                style={{ color: longest >= 7 ? "var(--s-on-secondary-container)" : "var(--s-outline)" }}
+          {milestones.map((m) => (
+            <li key={m.key} className="flex items-start gap-4" style={{ opacity: m.achieved ? 1 : 0.5 }}>
+              <div
+                className="flex h-10 w-10 flex-none items-center justify-center rounded-full"
+                style={{ background: m.achieved ? "var(--s-secondary-container)" : "var(--s-surface-variant)" }}
               >
-                {longest >= 7 ? "workspace_premium" : "lock"}
-              </span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-bold" style={{ color: "var(--s-on-surface)" }}>
-                7-day streak
-              </span>
-              <span className="text-xs" style={{ color: "var(--s-on-surface-variant)" }}>
-                {longest >= 7 ? `Longest streak: ${longest} days` : `${7 - longest} more days to go`}
-              </span>
-            </div>
-          </li>
-          <li className="flex items-start gap-4" style={{ opacity: sunnah.prayedWithSunnah >= 100 ? 1 : 0.5 }}>
-            <div
-              className="flex h-10 w-10 flex-none items-center justify-center rounded-full"
-              style={{ background: sunnah.prayedWithSunnah >= 100 ? "var(--s-secondary-container)" : "var(--s-surface-variant)" }}
-            >
-              <span
-                className="material-symbols-outlined"
-                style={{ color: sunnah.prayedWithSunnah >= 100 ? "var(--s-on-secondary-container)" : "var(--s-outline)" }}
-              >
-                {sunnah.prayedWithSunnah >= 100 ? "workspace_premium" : "lock"}
-              </span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-bold" style={{ color: "var(--s-on-surface)" }}>
-                100 Sunnahs
-              </span>
-              <span className="text-xs" style={{ color: "var(--s-on-surface-variant)" }}>
-                {sunnah.prayedWithSunnah >= 100
-                  ? "Completed this month"
-                  : `${100 - sunnah.prayedWithSunnah} more to go this month`}
-              </span>
-            </div>
-          </li>
-          <li className="flex items-start gap-4" style={{ opacity: streak >= 30 ? 1 : 0.5 }}>
-            <div
-              className="flex h-10 w-10 flex-none items-center justify-center rounded-full"
-              style={{ background: streak >= 30 ? "var(--s-secondary-container)" : "var(--s-surface-variant)" }}
-            >
-              <span
-                className="material-symbols-outlined"
-                style={{ color: streak >= 30 ? "var(--s-on-secondary-container)" : "var(--s-outline)" }}
-              >
-                {streak >= 30 ? "workspace_premium" : "lock"}
-              </span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-bold" style={{ color: "var(--s-on-surface)" }}>
-                30 Days, All 5 Prayers
-              </span>
-              <span className="text-xs" style={{ color: "var(--s-on-surface-variant)" }}>
-                {streak >= 30 ? "Completed — Alhamdulillah!" : `Current streak: ${streak} days`}
-              </span>
-            </div>
-          </li>
+                <span
+                  className="material-symbols-outlined"
+                  style={{ color: m.achieved ? "var(--s-on-secondary-container)" : "var(--s-outline)" }}
+                >
+                  {m.achieved ? m.icon : "lock"}
+                </span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm font-bold" style={{ color: "var(--s-on-surface)" }}>
+                  {m.title}
+                </span>
+                <span className="text-xs" style={{ color: "var(--s-on-surface-variant)" }}>
+                  {m.achieved ? m.doneLabel : m.lockedLabel}
+                </span>
+              </div>
+            </li>
+          ))}
         </ul>
       </div>
     </section>

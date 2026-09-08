@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { Prayer, PrayerLog, QadaLog } from "../../lib/salah";
-import { PRAYERS, PRAYER_LABELS, qadaBacklog, qadaOwed } from "../../lib/salah";
+import { PRAYERS, PRAYER_LABELS, qadaBacklog, qadaLogStreak, qadaOwed, qadaPace } from "../../lib/salah";
 import { PRAYER_META } from "./meta";
 
 interface Props {
@@ -26,6 +26,9 @@ export function SalahQada({ logs, qadaLogs, onLogQada }: Props) {
   const overallPct = totalEverMissed > 0 ? Math.min(100, ((totalEverMissed - totalOwed) / totalEverMissed) * 100) : 100;
   const recent = qadaLogs.slice(0, 5);
   const backlog = useMemo(() => qadaBacklog(logs, qadaLogs), [logs, qadaLogs]);
+  const logStreak = useMemo(() => qadaLogStreak(qadaLogs, new Date()), [qadaLogs]);
+  const pace = useMemo(() => qadaPace(qadaLogs, 14, new Date()), [qadaLogs]);
+  const weeksLeft = pace > 0 && totalOwed > 0 ? Math.max(1, Math.ceil(totalOwed / (pace * 7))) : null;
 
   return (
     <section className="flex flex-col gap-6 pb-6">
@@ -63,6 +66,23 @@ export function SalahQada({ logs, qadaLogs, onLogQada }: Props) {
               style={{ width: `${overallPct}%`, background: "var(--s-primary)", boxShadow: "0 0 8px rgba(22,52,34,0.4)" }}
             />
           </div>
+          {(weeksLeft !== null || logStreak > 0) && (
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              {weeksLeft !== null && (
+                <span className="text-xs" style={{ color: "var(--s-on-surface-variant)" }}>
+                  At your current pace, clear in ~{weeksLeft} week{weeksLeft === 1 ? "" : "s"}
+                </span>
+              )}
+              {logStreak > 0 && (
+                <span
+                  className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide"
+                  style={{ background: "var(--s-secondary-container)", color: "var(--s-on-secondary-container)" }}
+                >
+                  🔥 {logStreak} day{logStreak === 1 ? "" : "s"} in a row
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CorePrayer, Prayer, PrayerLog, PrayerStatus, SalahSettingsRow } from "../../lib/salah";
 import {
   PRAYERS,
@@ -6,6 +6,7 @@ import {
   buildLogMap,
   currentStreak,
   prayedCount,
+  streakJustBroke,
   tahajjudStreak,
   toDayString,
   weekComparison
@@ -96,6 +97,7 @@ export function SalahToday({
   const dayEntry = map.get(todayStr);
   const prayed = prayedCount(dayEntry);
   const streak = useMemo(() => currentStreak(map, new Date()), [map]);
+  const justBroke = useMemo(() => streak === 0 && streakJustBroke(map, new Date()), [map, streak]);
   const nightStreak = useMemo(() => tahajjudStreak(logs, new Date()), [logs]);
   const weekCmp = useMemo(() => weekComparison(map, new Date()), [map]);
   const [breathingOpen, setBreathingOpen] = useState(false);
@@ -104,6 +106,22 @@ export function SalahToday({
     audioBlob: null
   });
   const [savingIntention, setSavingIntention] = useState(false);
+
+  // Ticks the countdown on the Next Prayer card without re-deriving the
+  // whole day's data every second — only `now` changes, once a minute.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  // "Logged X as Y" undo snackbar — reverts to unlogged, not to whatever it
+  // was before, since that's the only state a prayer can meaningfully return to.
+  const [undo, setUndo] = useState<{ prayer: Prayer; status: PrayerStatus } | null>(null);
+  const undoTimerRef = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (undoTimerRef.current !== null) window.clearTimeout(undoTimerRef.current);
+  }, []);
 
   const todaysIntentions = useMemo(
     () => intentions.filter((i) => i.day === todayStr),
@@ -120,6 +138,16 @@ export function SalahToday({
 
   function handleSetStatus(p: CorePrayer, status: PrayerStatus) {
     onSetStatus(todayStr, p, status);
+    setUndo({ prayer: p, status });
+    if (undoTimerRef.current !== null) window.clearTimeout(undoTimerRef.current);
+    undoTimerRef.current = window.setTimeout(() => setUndo(null), 5000);
+  }
+
+  function undoLastLog() {
+    if (!undo) return;
+    onClearStatus(todayStr, undo.prayer);
+    setUndo(null);
+    if (undoTimerRef.current !== null) window.clearTimeout(undoTimerRef.current);
   }
 
   function toggleTahajjud() {
@@ -135,6 +163,15 @@ export function SalahToday({
     nextPrayer && todayTimes
       ? todayTimes[nextPrayer].toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
       : null;
+  const nextCountdown = useMemo(() => {
+    if (!nextPrayer || !todayTimes) return null;
+    const ms = todayTimes[nextPrayer].getTime() - now.getTime();
+    if (ms <= 0) return "Due now";
+    const totalMin = Math.round(ms / 60000);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    return h > 0 ? `in ${h}h ${m}m` : `in ${m}m`;
+  }, [nextPrayer, todayTimes, now]);
 
   async function saveIntention() {
     if (!nextPrayer) return;
@@ -157,8 +194,24 @@ export function SalahToday({
   return (
     <section className="flex flex-col gap-6 pb-6">
       {/* Badges row */}
-      {(weekCmp?.isNewBest || streak > 0) && (
+      {(weekCmp?.isNewBest || streak > 0 || justBroke) && (
         <div className="flex flex-wrap items-center gap-2">
+          {justBroke && (
+            <div
+              className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5"
+              style={{ background: "var(--s-surface-container-high)" }}
+            >
+              <span className="material-symbols-outlined text-sm" style={{ color: "var(--s-on-surface-variant)" }}>
+                refresh
+              </span>
+              <span
+                className="text-[11px] font-bold tracking-widest uppercase"
+                style={{ color: "var(--s-on-surface-variant)" }}
+              >
+                Fresh start today
+              </span>
+            </div>
+          )}
           {weekCmp?.isNewBest && (
             <div
               className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5"
@@ -271,6 +324,11 @@ export function SalahToday({
                 <p className="text-xl font-headline" style={{ color: "var(--s-on-surface)" }}>
                   {nextTime}
                 </p>
+                {nextCountdown && (
+                  <p className="text-xs font-medium" style={{ color: "var(--s-primary)" }}>
+                    {nextCountdown}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -472,6 +530,32 @@ export function SalahToday({
         </div>
       )}
 
+      {/* Undo snackbar — mis-tap recovery, auto-dismisses after 5s. */}
+      {undo && (
+        <div
+          className="animate-app-in fixed inset-x-4 z-[70] mx-auto flex max-w-sm items-center gap-3 rounded-2xl px-4 py-3 shadow-xl"
+          style={{
+            bottom: "calc(env(safe-area-inset-bottom, 0px) + 9rem)",
+            background: "var(--s-inverse-surface, var(--s-surface-container-highest))",
+            color: "var(--s-inverse-on-surface, var(--s-on-surface))"
+          }}
+        >
+          <span className="material-symbols-outlined text-[20px]" style={{ color: "var(--s-primary)" }}>
+            check_circle
+          </span>
+          <p className="flex-1 text-sm">
+            {PRAYER_LABELS[undo.prayer]} logged as{" "}
+            {undo.status === "on_time" ? "on time" : undo.status}
+          </p>
+          <button
+            className="flex-none text-sm font-bold uppercase tracking-wide"
+            style={{ color: "var(--s-primary)" }}
+            onClick={undoLastLog}
+          >
+            Undo
+          </button>
+        </div>
+      )}
     </section>
   );
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { Prayer, PrayerLog, PrayerStatus } from "../../lib/salah";
 import {
   PRAYERS,
@@ -9,6 +9,8 @@ import {
   toDayString
 } from "../../lib/salah";
 import { PRAYER_META } from "./meta";
+
+const SWIPE_THRESHOLD = 60;
 
 interface Props {
   logs: PrayerLog[];
@@ -41,6 +43,8 @@ export function SalahHistory({ logs, onSetStatus, onSetSunnah }: Props) {
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
   const [selectedDay, setSelectedDay] = useState<string | null>(() => toDayString(new Date()));
+  const [viewMode, setViewMode] = useState<"month" | "year">("month");
+  const monthInputRef = useRef<HTMLInputElement>(null);
 
   const map = useMemo(() => buildLogMap(logs), [logs]);
   const todayStr = toDayString(new Date());
@@ -55,9 +59,43 @@ export function SalahHistory({ logs, onSetStatus, onSetSunnah }: Props) {
   const selectedPct = (selectedCount / PRAYERS.length) * 100;
   const circumference = 2 * Math.PI * 16;
 
+  // Perfect-days-so-far summary for the currently viewed month.
+  const monthSummary = useMemo(() => {
+    const daysSoFar = month.getFullYear() === new Date().getFullYear() && month.getMonth() === new Date().getMonth()
+      ? new Date().getDate()
+      : daysInMonth;
+    let perfect = 0;
+    for (let d = 1; d <= daysSoFar; d++) {
+      if (isPerfectDay(logs, toDayString(new Date(month.getFullYear(), month.getMonth(), d)))) perfect++;
+    }
+    return { perfect, daysSoFar };
+  }, [logs, month, daysInMonth]);
+
   function shiftMonth(delta: number) {
     setMonth((m) => new Date(m.getFullYear(), m.getMonth() + delta, 1));
     setSelectedDay(null);
+  }
+
+  function jumpToMonth(value: string) {
+    const [y, m] = value.split("-").map(Number);
+    if (!y || !m) return;
+    setMonth(new Date(y, m - 1, 1));
+    setSelectedDay(null);
+  }
+
+  // Swipe left/right on the calendar to change months.
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  function onSwipeStart(e: React.PointerEvent) {
+    swipeStart.current = { x: e.clientX, y: e.clientY };
+  }
+  function onSwipeEnd(e: React.PointerEvent) {
+    if (!swipeStart.current) return;
+    const dx = e.clientX - swipeStart.current.x;
+    const dy = e.clientY - swipeStart.current.y;
+    swipeStart.current = null;
+    if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      shiftMonth(dx < 0 ? 1 : -1);
+    }
   }
 
   return (
@@ -66,11 +104,16 @@ export function SalahHistory({ logs, onSetStatus, onSetSunnah }: Props) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-headline text-2xl" style={{ color: "var(--s-primary)" }}>
-            {monthLabel}
+            {viewMode === "year" ? month.getFullYear() : monthLabel}
           </h2>
-          {hijri && (
+          {hijri && viewMode === "month" && (
             <p className="mt-0.5 text-[10px] font-bold tracking-widest uppercase" style={{ color: "var(--s-on-surface-variant)" }}>
               {hijri}
+            </p>
+          )}
+          {viewMode === "month" && monthSummary.perfect > 0 && (
+            <p className="mt-0.5 text-xs" style={{ color: "var(--s-on-surface-variant)" }}>
+              {monthSummary.perfect} of {monthSummary.daysSoFar} days perfect this month
             </p>
           )}
         </div>
@@ -78,24 +121,99 @@ export function SalahHistory({ logs, onSetStatus, onSetSunnah }: Props) {
           <button
             className="flex h-10 w-10 items-center justify-center rounded-full transition-transform active:scale-95"
             style={{ background: "var(--s-surface-container)", color: "var(--s-on-surface-variant)" }}
-            onClick={() => shiftMonth(-1)}
-            aria-label="Previous month"
+            onClick={() => setViewMode((v) => (v === "month" ? "year" : "month"))}
+            aria-label={viewMode === "month" ? "Switch to year view" : "Switch to month view"}
+            title={viewMode === "month" ? "Year view" : "Month view"}
+          >
+            <span className="material-symbols-outlined text-[20px]">
+              {viewMode === "month" ? "calendar_view_month" : "calendar_month"}
+            </span>
+          </button>
+          <button
+            className="relative flex h-10 w-10 items-center justify-center rounded-full transition-transform active:scale-95"
+            style={{ background: "var(--s-surface-container)", color: "var(--s-on-surface-variant)" }}
+            onClick={() => monthInputRef.current?.showPicker?.() ?? monthInputRef.current?.click()}
+            aria-label="Jump to month"
+            title="Jump to month"
+          >
+            <span className="material-symbols-outlined text-[20px]">event</span>
+            <input
+              ref={monthInputRef}
+              type="month"
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              value={`${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}`}
+              onChange={(e) => jumpToMonth(e.target.value)}
+              aria-hidden="true"
+              tabIndex={-1}
+            />
+          </button>
+          <button
+            className="flex h-10 w-10 items-center justify-center rounded-full transition-transform active:scale-95"
+            style={{ background: "var(--s-surface-container)", color: "var(--s-on-surface-variant)" }}
+            onClick={() => (viewMode === "year" ? setMonth((m) => new Date(m.getFullYear() - 1, m.getMonth(), 1)) : shiftMonth(-1))}
+            aria-label="Previous"
           >
             <span className="material-symbols-outlined text-[20px]">chevron_left</span>
           </button>
           <button
             className="flex h-10 w-10 items-center justify-center rounded-full transition-transform active:scale-95"
             style={{ background: "var(--s-surface-container)", color: "var(--s-on-surface-variant)" }}
-            onClick={() => shiftMonth(1)}
-            aria-label="Next month"
+            onClick={() => (viewMode === "year" ? setMonth((m) => new Date(m.getFullYear() + 1, m.getMonth(), 1)) : shiftMonth(1))}
+            aria-label="Next"
           >
             <span className="material-symbols-outlined text-[20px]">chevron_right</span>
           </button>
         </div>
       </div>
 
+      {viewMode === "year" ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {Array.from({ length: 12 }).map((_, mi) => {
+            const monthDate = new Date(month.getFullYear(), mi, 1);
+            const daysThisMonth = new Date(month.getFullYear(), mi + 1, 0).getDate();
+            const isCurrentMonth = mi === new Date().getMonth() && month.getFullYear() === new Date().getFullYear();
+            return (
+              <button
+                key={mi}
+                className="flex flex-col gap-2 rounded-xl p-3 text-left transition-transform active:scale-[0.97]"
+                style={{
+                  background: "var(--s-surface-container)",
+                  outline: isCurrentMonth ? "2px solid var(--s-primary)" : undefined,
+                  outlineOffset: isCurrentMonth ? "1px" : undefined
+                }}
+                onClick={() => {
+                  setMonth(monthDate);
+                  setViewMode("month");
+                }}
+              >
+                <span className="text-xs font-bold" style={{ color: "var(--s-on-surface)" }}>
+                  {monthDate.toLocaleDateString("en-US", { month: "short" })}
+                </span>
+                <div className="grid grid-cols-7 gap-[3px]">
+                  {Array.from({ length: daysThisMonth }).map((_, di) => {
+                    const dayStr = toDayString(new Date(month.getFullYear(), mi, di + 1));
+                    const isFuture = dayStr > todayStr;
+                    const count = prayedCount(map.get(dayStr));
+                    let dot = "var(--s-surface-container-high)";
+                    if (!isFuture && count >= PRAYERS.length) dot = "var(--s-primary)";
+                    else if (!isFuture && count > 0) dot = "var(--s-tertiary)";
+                    return (
+                      <div
+                        key={di}
+                        className="aspect-square rounded-[1px]"
+                        style={{ background: isFuture ? "transparent" : dot }}
+                      />
+                    );
+                  })}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+      <>
       {/* Calendar */}
-      <div>
+      <div onPointerDown={onSwipeStart} onPointerUp={onSwipeEnd}>
         <div className="mb-4 grid grid-cols-7 gap-y-4 gap-x-2 text-center">
           {WEEKDAYS.map((w, i) => (
             <div key={i} className="text-[12px] font-medium" style={{ color: "var(--s-on-surface-variant)" }}>
@@ -337,6 +455,8 @@ export function SalahHistory({ logs, onSetStatus, onSetSunnah }: Props) {
             })}
           </div>
         </div>
+      )}
+      </>
       )}
     </section>
   );

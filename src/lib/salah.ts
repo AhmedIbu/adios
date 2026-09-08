@@ -164,6 +164,21 @@ export function currentStreak(map: LogMap, today: Date): number {
   return streak;
 }
 
+/**
+ * True exactly the day after a streak lapses — yesterday was incomplete but
+ * the day before was complete (part of a streak). Naturally stops firing
+ * once a day or two pass, since the day-before check then fails too.
+ */
+export function streakJustBroke(map: LogMap, today: Date): boolean {
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const dayBefore = new Date(today);
+  dayBefore.setDate(dayBefore.getDate() - 2);
+  return (
+    !isDayComplete(map.get(toDayString(yesterday))) && isDayComplete(map.get(toDayString(dayBefore)))
+  );
+}
+
 export function longestStreak(map: LogMap): number {
   const days = [...map.keys()].sort();
   if (days.length === 0) return 0;
@@ -311,6 +326,27 @@ export function qadaBacklog(logs: PrayerLog[], qadaLogs: QadaLog[]): QadaBacklog
     for (const m of remaining) backlog.push({ day: m.day, prayer: p });
   }
   return backlog.sort((a, b) => a.day.localeCompare(b.day));
+}
+
+/** Qada logged per day, averaged over the last `days` days (today inclusive). */
+export function qadaPace(qadaLogs: QadaLog[], days: number, today: Date): number {
+  const cutoff = new Date(today);
+  cutoff.setDate(cutoff.getDate() - days);
+  const count = qadaLogs.filter((q) => new Date(q.completed_at) >= cutoff).length;
+  return count / days;
+}
+
+/** Consecutive days ending today (or yesterday) with at least one qada logged. */
+export function qadaLogStreak(qadaLogs: QadaLog[], today: Date): number {
+  const days = new Set(qadaLogs.map((q) => toDayString(new Date(q.completed_at))));
+  let streak = 0;
+  const cursor = new Date(today);
+  if (!days.has(toDayString(cursor))) cursor.setDate(cursor.getDate() - 1);
+  while (days.has(toDayString(cursor))) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
 }
 
 function weekStart(d: Date): Date {

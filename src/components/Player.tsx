@@ -327,11 +327,16 @@ export function Player({
           <div className="mb-6 space-y-2">
             <div
               ref={seekBarRef}
+              tabIndex={0}
               className="relative flex h-10 w-full touch-none items-center gap-[2px]"
               onPointerDown={onSeekBarDown}
               onPointerMove={onSeekBarMove}
               onPointerUp={onSeekBarUp}
               onPointerCancel={onSeekBarUp}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowLeft") onSeekBy(-5);
+                else if (e.key === "ArrowRight") onSeekBy(5);
+              }}
               role="slider"
               aria-label="Seek"
               aria-valuemin={0}

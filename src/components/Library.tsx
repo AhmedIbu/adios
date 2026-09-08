@@ -515,6 +515,16 @@ export function Library({
                 tabIndex={0}
                 aria-label={`${folderLabel(f)}, ${count} ${count === 1 ? "item" : "items"}`}
                 className={tileClass}
+                onKeyDown={
+                  reorderingFolders
+                    ? undefined
+                    : (e: React.KeyboardEvent) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          playedOnly ? onBrowseFolder?.(f) : setFilter(on ? "all" : f);
+                        }
+                      }
+                }
                 {...(reorderingFolders
                   ? {
                       onPointerDown: (e: React.PointerEvent) => {
@@ -678,15 +688,22 @@ export function Library({
       })()}
 
       {visible.length === 0 && (
-        <p className="px-3 py-8 text-center text-sm text-on-surface-variant">
-          {tracks.length === 0
-            ? "Your shelf is empty. Upload your first audio from the menu."
-            : searching
-              ? "No matches — try a different search."
-              : playedOnly
-                ? "Nothing played yet — open Library from the menu to browse and start listening."
-                : "Nothing matches — try another folder or search."}
-        </p>
+        <div className="flex flex-col items-center gap-3 px-3 py-10 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-container-high">
+            <span className="material-symbols-outlined text-3xl text-on-surface-variant">
+              {tracks.length === 0 ? "library_music" : searching ? "search_off" : "music_off"}
+            </span>
+          </div>
+          <p className="max-w-[240px] text-sm text-on-surface-variant">
+            {tracks.length === 0
+              ? "Your shelf is empty. Upload your first audio from the menu."
+              : searching
+                ? "No matches — try a different search."
+                : playedOnly
+                  ? "Nothing played yet — open Library from the menu to browse and start listening."
+                  : "Nothing matches — try another folder or search."}
+          </p>
+        </div>
       )}
 
       <ul className="flex flex-col gap-2">

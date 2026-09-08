@@ -56,9 +56,14 @@ export function SalahDuaLibrary() {
         </button>
       </div>
       {visible.length === 0 ? (
-        <p className="py-6 text-center text-sm text-on-surface-dim">
-          No bookmarked duas yet — tap the star on any dua to save it here.
-        </p>
+        <div className="flex flex-col items-center gap-3 py-8 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/5">
+            <span className="material-symbols-outlined text-2xl text-on-surface-dim">star_border</span>
+          </div>
+          <p className="max-w-[220px] text-sm text-on-surface-dim">
+            No bookmarked duas yet — tap the star on any dua to save it here.
+          </p>
+        </div>
       ) : (
         <div className="space-y-2">
           {visible.map((d) => {

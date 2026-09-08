@@ -16,6 +16,7 @@ import {
 import { DUAS } from "../../lib/content/duas";
 import { allQuotes } from "../../lib/reminders";
 import { toDayString } from "../../lib/salah";
+import { SalahSkeleton } from "./SalahSkeleton";
 
 const FORGIVENESS_DUA = DUAS.find((d) => d.id === "forgiveness")!;
 const SEVERITY_LABELS = ["Minor", "Light", "Moderate", "Serious", "Major"];
@@ -192,13 +193,7 @@ export function SalahSins() {
   }
 
   if (loading) {
-    return (
-      <div className="rounded-2xl p-6 shadow-sm" style={{ background: "var(--s-surface-container)" }}>
-        <p className="text-center text-sm" style={{ color: "var(--s-on-surface-variant)" }}>
-          Loading…
-        </p>
-      </div>
-    );
+    return <SalahSkeleton rows={4} />;
   }
   if (loadError) {
     return (

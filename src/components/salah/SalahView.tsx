@@ -28,6 +28,7 @@ import { SalahToday } from "./SalahToday";
 import { SalahHistory } from "./SalahHistory";
 import { SalahQada } from "./SalahQada";
 import { SalahPrayerReminderBanner } from "./SalahPrayerReminderBanner";
+import { SalahSkeleton } from "./SalahSkeleton";
 
 // Heavier/less-visited tabs — lazy so their weight only loads when opened.
 const SalahStats = lazy(() => import("./SalahStats").then((m) => ({ default: m.SalahStats })));
@@ -267,11 +268,7 @@ export function SalahView({ onSwitchApp, theme, onToggleTheme }: Props) {
           {!loading && !loadError && (
             <SalahPrayerReminderBanner logs={logs} settings={settings} onSetStatus={handleSetStatus} />
           )}
-          {loading && (
-            <p className="px-3 py-10 text-center text-sm" style={{ color: "var(--s-on-surface-variant)" }}>
-              Loading…
-            </p>
-          )}
+          {loading && <SalahSkeleton />}
           {!loading && loadError && (
             <p className="px-3 py-10 text-center text-sm" style={{ color: "var(--s-error)" }}>
               {loadError}
@@ -300,33 +297,21 @@ export function SalahView({ onSwitchApp, theme, onToggleTheme }: Props) {
               )}
               {tab === "stats" && (
                 <Suspense
-                  fallback={
-                    <p className="px-3 py-10 text-center text-sm" style={{ color: "var(--s-on-surface-variant)" }}>
-                      Loading…
-                    </p>
-                  }
+                  fallback={<SalahSkeleton />}
                 >
                   <SalahStats logs={logs} qadaLogs={qadaLogs} />
                 </Suspense>
               )}
               {tab === "sins" && (
                 <Suspense
-                  fallback={
-                    <p className="px-3 py-10 text-center text-sm" style={{ color: "var(--s-on-surface-variant)" }}>
-                      Loading…
-                    </p>
-                  }
+                  fallback={<SalahSkeleton />}
                 >
                   <SalahSins />
                 </Suspense>
               )}
               {tab === "more" && (
                 <Suspense
-                  fallback={
-                    <p className="px-3 py-10 text-center text-sm" style={{ color: "var(--s-on-surface-variant)" }}>
-                      Loading…
-                    </p>
-                  }
+                  fallback={<SalahSkeleton />}
                 >
                   <SalahMore
                     reflections={reflections}

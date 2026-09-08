@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { AnsweredDua, Reflection } from "../../lib/journal";
 import type { SalahSettingsRow } from "../../lib/salah";
 import { hasLocation } from "../../lib/prayertimes";
+import { supabase } from "../../lib/supabase";
 import { SalahLearn } from "./SalahLearn";
 import { SalahHijriCalendar } from "./SalahHijriCalendar";
 import { SalahIslamicEvents } from "./SalahIslamicEvents";
@@ -116,6 +117,20 @@ export function SalahMore({ settings, onSaveSettings, ...learnProps }: Props) {
             </span>
             <span className="text-center text-xs font-medium" style={{ color: "var(--s-on-surface)" }}>
               Settings
+            </span>
+          </button>
+          <button
+            className="flex flex-col items-center justify-center gap-3 rounded-xl p-4 transition-transform active:scale-95"
+            style={{ background: "var(--s-surface-container)" }}
+            onClick={() => {
+              if (confirm("Sign out of this device?")) supabase.auth.signOut();
+            }}
+          >
+            <span className="material-symbols-outlined text-[28px]" style={{ color: "var(--s-tertiary)" }}>
+              logout
+            </span>
+            <span className="text-center text-xs font-medium" style={{ color: "var(--s-on-surface)" }}>
+              Sign out
             </span>
           </button>
         </div>

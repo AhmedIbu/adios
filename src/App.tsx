@@ -27,6 +27,7 @@ import type { Track } from "./lib/types";
 import { folderLabel } from "./lib/types";
 import { usePlayer } from "./hooks/usePlayer";
 import { Gate } from "./components/Gate";
+import { ResetPassword } from "./components/ResetPassword";
 import { Library } from "./components/Library";
 import { Upload } from "./components/Upload";
 import { Player } from "./components/Player";
@@ -34,21 +35,30 @@ import { SalahView } from "./components/salah/SalahView";
 import { AppPicker } from "./components/AppPicker";
 import { resolveDefaultApp } from "./lib/appMode";
 
-type Theme = "dark" | "light";
+type ThemePreference = "dark" | "light" | "system";
 type AppChoice = "picker" | "adios" | "salah";
 
 const DEFAULT_APP = resolveDefaultApp();
 
+function resolveTheme(pref: ThemePreference): "dark" | "light" {
+  if (pref === "system") {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  return pref;
+}
+
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
   const [app, setApp] = useState<AppChoice>(DEFAULT_APP);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [folders, setFolders] = useState<FolderRow[]>([]);
   const [offline, setOffline] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState<Set<string>>(new Set());
-  const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem("theme") as Theme) || "dark"
+  const [themePref, setThemePref] = useState<ThemePreference>(
+    () => (localStorage.getItem("theme") as ThemePreference | null) ?? "system"
   );
+  const [theme, setResolvedTheme] = useState<"dark" | "light">(() => resolveTheme(themePref));
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [libraryExpanded, setLibraryExpanded] = useState(false);
@@ -124,9 +134,22 @@ export default function App() {
   }, [tracks, state.track, playQueue]);
 
   useEffect(() => {
+    localStorage.setItem("theme", themePref);
+    setResolvedTheme(resolveTheme(themePref));
+    if (themePref !== "system") return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => setResolvedTheme(resolveTheme(themePref));
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [themePref]);
+
+  useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem("theme", theme);
   }, [theme]);
+
+  const cycleTheme = useCallback(() => {
+    setThemePref((p) => (p === "dark" ? "light" : p === "light" ? "system" : "dark"));
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setShowBackToTop(window.scrollY > 400);
@@ -136,8 +159,16 @@ export default function App() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      setSession(s);
+      if (event === "PASSWORD_RECOVERY") setPasswordRecovery(true);
+    });
     return () => sub.subscription.unsubscribe();
+  }, []);
+
+  const handleSignOut = useCallback(() => {
+    if (!confirm("Sign out of this device?")) return;
+    supabase.auth.signOut();
   }, []);
 
   useEffect(() => {
@@ -320,6 +351,9 @@ export default function App() {
       </main>
     );
   }
+  if (passwordRecovery) {
+    return <ResetPassword onDone={() => setPasswordRecovery(false)} />;
+  }
   if (!session) {
     return <Gate />;
   }
@@ -333,7 +367,7 @@ export default function App() {
         <SalahView
           onSwitchApp={DEFAULT_APP === "picker" ? () => setApp("picker") : undefined}
           theme={theme}
-          onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
+          onToggleTheme={cycleTheme}
         />
         <Player
           lifted
@@ -391,12 +425,12 @@ export default function App() {
           </button>
           <button
             className="flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant transition-colors duration-200 active:bg-surface-variant"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            aria-label="Toggle theme"
-            title="Toggle theme"
+            onClick={cycleTheme}
+            aria-label={`Theme: ${themePref} (tap to change)`}
+            title={`Theme: ${themePref}`}
           >
             <span className="material-symbols-outlined text-xl">
-              {theme === "dark" ? "light_mode" : "dark_mode"}
+              {themePref === "system" ? "brightness_auto" : theme === "dark" ? "dark_mode" : "light_mode"}
             </span>
           </button>
         </div>
@@ -501,6 +535,13 @@ export default function App() {
           >
             <span className="material-symbols-outlined">cloud_upload</span>
             <span className="text-sm font-medium">Upload</span>
+          </button>
+          <button
+            className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-on-surface-variant transition-colors hover:bg-surface-variant"
+            onClick={handleSignOut}
+          >
+            <span className="material-symbols-outlined">logout</span>
+            <span className="text-sm font-medium">Sign out</span>
           </button>
         </div>
 

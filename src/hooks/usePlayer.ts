@@ -117,7 +117,7 @@ export function usePlayer(onTrackChange?: (t: Track) => void) {
   }, []);
 
   const loadAndPlay = useCallback(
-    async (track: Track, position: number) => {
+    async (track: Track, position: number, autoplay = true) => {
       const a = audio();
       if (blobUrlRef.current) {
         URL.revokeObjectURL(blobUrlRef.current);
@@ -140,8 +140,10 @@ export function usePlayer(onTrackChange?: (t: Track) => void) {
       }
 
       setState((s) => ({ ...s, track, position, time: a.currentTime, duration: track.duration }));
-      await a.play();
-      onTrackChangeRef.current?.(track);
+      if (autoplay) {
+        await a.play();
+        onTrackChangeRef.current?.(track);
+      }
 
       // Lock-screen controls (iOS honors these in a Home Screen PWA)
       if ("mediaSession" in navigator) {
@@ -169,14 +171,16 @@ export function usePlayer(onTrackChange?: (t: Track) => void) {
   );
   loadAndPlayRef.current = loadAndPlay;
 
-  /** Start playing `tracks[startIndex]` with the rest of `tracks` as the queue for next/prev. */
+  /** Start playing `tracks[startIndex]` with the rest of `tracks` as the queue for next/prev.
+   *  @param autoplay pass false to load the track paused, ready to resume — used to restore
+   *  the last-played track into the Player bar on app open without audio suddenly starting. */
   const playQueue = useCallback(
-    (tracks: Track[], startIndex: number) => {
+    (tracks: Track[], startIndex: number, autoplay = true) => {
       const shuffle = stateRef.current.shuffle;
       const order = shuffle ? shuffledIndices(tracks.length) : tracks.map((_, i) => i);
       const position = order.indexOf(startIndex);
       setState((s) => ({ ...s, queue: tracks, order }));
-      loadAndPlay(tracks[startIndex], position);
+      loadAndPlay(tracks[startIndex], position, autoplay);
     },
     [loadAndPlay]
   );

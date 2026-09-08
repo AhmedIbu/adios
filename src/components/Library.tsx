@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Track, Folder } from "../lib/types";
 import { folderLabel, fmtTime } from "../lib/types";
 import type { FolderRow } from "../lib/supabase";
@@ -151,6 +151,20 @@ function styleFor(name: string): FolderStyle {
 }
 
 const PAGE_SIZE = 5;
+const STALE_OFFLINE_DAYS = 30;
+const CLEANUP_DISMISS_KEY = "library:cleanup-dismissed-on";
+
+function todayKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function loadCleanupDismissedDay(): string | null {
+  try {
+    return localStorage.getItem(CLEANUP_DISMISS_KEY);
+  } catch {
+    return null;
+  }
+}
 
 export function Library({
   tracks,
@@ -173,6 +187,7 @@ export function Library({
 }: Props) {
   const [filter, setFilter] = useState<Folder | "all">(initialFilter ?? "all");
   const [query, setQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"custom" | "name" | "duration" | "date">("custom");
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [menuMode, setMenuMode] = useState<"main" | "offline" | "move">("main");
   const [showAll, setShowAll] = useState(false);
@@ -182,12 +197,43 @@ export function Library({
   const [renamingFolder, setRenamingFolder] = useState<FolderRow | null>(null);
   const [folderNameValue, setFolderNameValue] = useState("");
   const [poppedFolderId, setPoppedFolderId] = useState<string | null>(null);
+  const [bulkOfflineOpen, setBulkOfflineOpen] = useState(false);
+  const [cleanupDismissedDay, setCleanupDismissedDay] = useState<string | null>(() =>
+    loadCleanupDismissedDay()
+  );
   const searchRef = useRef<HTMLInputElement>(null);
   const bindLongPress = useLongPressBinder();
 
-  // Drag-to-reorder (Browse mode, single folder only — query.length===0 keeps
-  // the dragged list's positions meaningful against the real folder order).
-  const canReorder = !playedOnly && filter !== "all" && query.length === 0 && !!onReorder;
+  // Offline copies kept for a track that hasn't been played in a while — a
+  // candidate for freeing up local device storage.
+  const staleOffline = useMemo(() => {
+    if (!playedOnly) return [];
+    const cutoff = Date.now() - STALE_OFFLINE_DAYS * 24 * 60 * 60 * 1000;
+    return tracks.filter(
+      (t) => offlineIds.has(t.id) && (!t.last_played_at || new Date(t.last_played_at).getTime() < cutoff)
+    );
+  }, [tracks, offlineIds, playedOnly]);
+  const showCleanupTip = staleOffline.length > 0 && cleanupDismissedDay !== todayKey();
+
+  function dismissCleanupTip() {
+    const key = todayKey();
+    setCleanupDismissedDay(key);
+    try {
+      localStorage.setItem(CLEANUP_DISMISS_KEY, key);
+    } catch {
+      // ignore — dismissal is a nice-to-have, not durable data
+    }
+  }
+
+  function cleanupStaleOffline() {
+    for (const t of staleOffline) onRemoveOffline(t);
+    dismissCleanupTip();
+  }
+
+  // Drag-to-reorder (Browse mode, single folder only, custom sort — query.length===0
+  // keeps the dragged list's positions meaningful against the real folder order).
+  const canReorder =
+    !playedOnly && filter !== "all" && query.length === 0 && sortBy === "custom" && !!onReorder;
   const [dragId, setDragId] = useState<string | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
   const rowRefs = useRef<Map<string, HTMLLIElement>>(new Map());
@@ -200,6 +246,13 @@ export function Library({
     return () => document.removeEventListener("click", close);
   }, [openMenu]);
 
+  useEffect(() => {
+    if (!bulkOfflineOpen) return;
+    const close = () => setBulkOfflineOpen(false);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [bulkOfflineOpen]);
+
   function toggleMenu(id: string) {
     setMenuMode("main");
     setOpenMenu((cur) => (cur === id ? null : id));
@@ -209,25 +262,37 @@ export function Library({
     setShowAll(false);
   }, [filter, query]);
 
+  // On Home, a search query searches the whole library, not just play history.
+  const searching = playedOnly && query.trim().length > 0;
+
   const visible = tracks
     .filter(
       (t) =>
-        (!playedOnly || t.last_played_at) &&
+        (!playedOnly || searching || t.last_played_at) &&
         (filter === "all" || t.folder === filter) &&
         t.title.toLowerCase().includes(query.toLowerCase())
     )
     .sort((a, b) => {
-      if (playedOnly) {
+      if (playedOnly && !searching) {
         return new Date(b.last_played_at!).getTime() - new Date(a.last_played_at!).getTime();
       }
-      if (filter !== "all" && a.sort_order !== null && b.sort_order !== null) {
+      if (sortBy === "name") return a.title.localeCompare(b.title);
+      if (sortBy === "duration") return b.duration - a.duration;
+      if (sortBy === "date") return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      if (!playedOnly && filter !== "all" && a.sort_order !== null && b.sort_order !== null) {
         return a.sort_order - b.sort_order;
       }
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
   // Reordering only makes sense against the full folder, not a paginated slice.
   const displayed = canReorder || showAll ? visible : visible.slice(0, PAGE_SIZE);
-  const heading = playedOnly ? "Recently Played" : filter === "all" ? "All Tracks" : folderLabel(filter);
+  const heading = searching
+    ? `Results for "${query.trim()}"`
+    : playedOnly
+      ? "Recently Played"
+      : filter === "all"
+        ? "All Tracks"
+        : folderLabel(filter);
 
   const rows =
     dragId !== null && overIndex !== null
@@ -304,6 +369,30 @@ export function Library({
 
   return (
     <section>
+      {showCleanupTip && (
+        <div className="mb-6 flex items-center gap-3 rounded-2xl border border-white/5 bg-surface-container-high p-4 shadow-sm">
+          <span className="material-symbols-outlined flex-none text-2xl text-secondary">cleaning_services</span>
+          <p className="flex-1 text-xs text-on-surface-variant">
+            <span className="font-medium text-on-surface">{staleOffline.length} offline track{staleOffline.length === 1 ? "" : "s"}</span>{" "}
+            {staleOffline.length === 1 ? "hasn't" : "haven't"} been played in {STALE_OFFLINE_DAYS}+ days —
+            free up space on your device?
+          </p>
+          <button
+            className="flex-none rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-on-primary"
+            onClick={cleanupStaleOffline}
+          >
+            Remove
+          </button>
+          <button
+            className="flex h-7 w-7 flex-none items-center justify-center rounded-full text-on-surface-variant hover:bg-white/10"
+            onClick={dismissCleanupTip}
+            aria-label="Dismiss"
+          >
+            <span className="material-symbols-outlined text-[16px]">close</span>
+          </button>
+        </div>
+      )}
+
       {/* Folder quick-access grid */}
       <div className="mb-6">
         <h2 className="font-headline mb-3 text-xl tracking-tight text-on-surface">Folders</h2>
@@ -351,23 +440,32 @@ export function Library({
         </div>
       </div>
 
+      {/* Search — on Home this searches the whole library, not just play history. */}
+      <div className="mb-4 flex h-12 items-center rounded-full border border-white/5 bg-surface-container-high px-4 shadow-sm transition-colors focus-within:border-primary">
+        <span className="material-symbols-outlined mr-3 text-on-surface-variant">search</span>
+        <input
+          ref={searchRef}
+          id="library-search"
+          className="flex-1 border-none bg-transparent text-on-surface placeholder-on-surface-variant outline-none"
+          type="search"
+          placeholder="Search your audio…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search tracks"
+        />
+        {query.length > 0 && (
+          <button
+            className="ml-2 flex h-6 w-6 flex-none items-center justify-center rounded-full text-on-surface-variant hover:bg-white/10"
+            onClick={() => setQuery("")}
+            aria-label="Clear search"
+          >
+            <span className="material-symbols-outlined text-[16px]">close</span>
+          </button>
+        )}
+      </div>
+
       {!playedOnly && (
         <>
-          {/* Search */}
-          <div className="mb-4 flex h-12 items-center rounded-full border border-white/5 bg-surface-container-high px-4 shadow-sm transition-colors focus-within:border-primary">
-            <span className="material-symbols-outlined mr-3 text-on-surface-variant">search</span>
-            <input
-              ref={searchRef}
-              id="library-search"
-              className="flex-1 border-none bg-transparent text-on-surface placeholder-on-surface-variant outline-none"
-              type="search"
-              placeholder="Search your audio…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              aria-label="Search tracks"
-            />
-          </div>
-
           {/* Folder chips */}
           <nav className="mb-4 flex gap-2 overflow-x-auto pb-1" aria-label="Folders">
             <button
@@ -397,20 +495,79 @@ export function Library({
         </>
       )}
 
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-headline text-xl tracking-tight text-on-surface">{heading}</h2>
-        <span className="text-xs text-on-surface-variant">
-          {visible.length} {visible.length === 1 ? "item" : "items"}
-        </span>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h2 className="min-w-0 flex-1 truncate font-headline text-xl tracking-tight text-on-surface">
+          {heading}
+        </h2>
+        <div className="flex flex-none items-center gap-2">
+          {!playedOnly && (
+            <select
+              className="rounded-full border border-white/5 bg-surface-container-high px-3 py-1.5 text-xs text-on-surface-variant outline-none"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              aria-label="Sort tracks"
+            >
+              <option value="custom">Custom order</option>
+              <option value="name">Name (A–Z)</option>
+              <option value="duration">Duration</option>
+              <option value="date">Newest</option>
+            </select>
+          )}
+          <span className="text-xs whitespace-nowrap text-on-surface-variant">
+            {visible.length} {visible.length === 1 ? "item" : "items"}
+          </span>
+        </div>
       </div>
+
+      {!playedOnly && !searching && filter !== "all" && (() => {
+        const folderTracks = tracks.filter((t) => t.folder === filter);
+        const notOffline = folderTracks.filter((t) => !offlineIds.has(t.id));
+        if (folderTracks.length === 0) return null;
+        return (
+          <div className="relative mb-3">
+            <button
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-white/5 bg-surface-container-high py-2.5 text-xs font-medium text-on-surface transition-colors hover:bg-surface-container-highest disabled:opacity-50"
+              onClick={() => setBulkOfflineOpen((v) => !v)}
+              disabled={notOffline.length === 0}
+            >
+              <span className="material-symbols-outlined text-[16px]">
+                {notOffline.length === 0 ? "offline_pin" : "download"}
+              </span>
+              {notOffline.length === 0
+                ? "Whole folder kept offline"
+                : `Keep whole folder offline (${notOffline.length})`}
+            </button>
+            {bulkOfflineOpen && notOffline.length > 0 && (
+              <div
+                className="absolute top-12 right-0 left-0 z-20 overflow-hidden rounded-xl border border-white/10 bg-surface shadow-2xl"
+              >
+                {OFFLINE_DURATIONS.map((d) => (
+                  <button
+                    key={d.label}
+                    className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-on-surface hover:bg-white/5"
+                    onClick={() => {
+                      for (const t of notOffline) onKeepOffline(t, d.ms);
+                      setBulkOfflineOpen(false);
+                    }}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {visible.length === 0 && (
         <p className="px-3 py-8 text-center text-sm text-on-surface-variant">
           {tracks.length === 0
             ? "Your shelf is empty. Upload your first audio from the menu."
-            : playedOnly
-              ? "Nothing played yet — open Library from the menu to browse and start listening."
-              : "Nothing matches — try another folder or search."}
+            : searching
+              ? "No matches — try a different search."
+              : playedOnly
+                ? "Nothing played yet — open Library from the menu to browse and start listening."
+                : "Nothing matches — try another folder or search."}
         </p>
       )}
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
   supabase,
@@ -107,6 +107,20 @@ export default function App() {
     },
     [playQueue]
   );
+
+  // Resume last session: once, on first load, load (but don't autoplay) the
+  // most recently played track into the Player bar so it's ready to pick up.
+  const resumedRef = useRef(false);
+  useEffect(() => {
+    if (resumedRef.current || tracks.length === 0 || state.track) return;
+    const lastPlayed = [...tracks]
+      .filter((t) => t.last_played_at)
+      .sort((a, b) => new Date(b.last_played_at!).getTime() - new Date(a.last_played_at!).getTime())[0];
+    if (lastPlayed) {
+      resumedRef.current = true;
+      playQueue([lastPlayed], 0, false);
+    }
+  }, [tracks, state.track, playQueue]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;

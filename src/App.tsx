@@ -134,11 +134,13 @@ export default function App() {
     [playQueue]
   );
 
-  // Resume last session: once, on first load, load (but don't autoplay) the
-  // most recently played track into the Player bar so it's ready to pick up.
+  // Resume last session: once, the first time the Adios app is actually
+  // opened, load (but don't autoplay) the most recently played track into
+  // the Player bar so it's ready to pick up. Gated on app === "adios" so
+  // the mini player doesn't pop up unprompted while using Salah Tracker.
   const resumedRef = useRef(false);
   useEffect(() => {
-    if (resumedRef.current || tracks.length === 0 || state.track) return;
+    if (app !== "adios" || resumedRef.current || tracks.length === 0 || state.track) return;
     const lastPlayed = [...tracks]
       .filter((t) => t.last_played_at)
       .sort((a, b) => new Date(b.last_played_at!).getTime() - new Date(a.last_played_at!).getTime())[0];
@@ -146,7 +148,7 @@ export default function App() {
       resumedRef.current = true;
       playQueue([lastPlayed], 0, false);
     }
-  }, [tracks, state.track, playQueue]);
+  }, [app, tracks, state.track, playQueue]);
 
   useEffect(() => {
     localStorage.setItem("theme", themePref);

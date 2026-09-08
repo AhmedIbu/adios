@@ -30,6 +30,7 @@ import { SalahHistory } from "./SalahHistory";
 import { SalahQada } from "./SalahQada";
 import { SalahPrayerReminderBanner } from "./SalahPrayerReminderBanner";
 import { SalahSkeleton } from "./SalahSkeleton";
+import { OnboardingTour } from "../OnboardingTour";
 
 // Heavier/less-visited tabs — lazy so their weight only loads when opened.
 const SalahStats = lazy(() => import("./SalahStats").then((m) => ({ default: m.SalahStats })));
@@ -240,6 +241,26 @@ export function SalahView({ onSwitchApp, theme, onToggleTheme }: Props) {
       className="flex min-h-dvh flex-col"
       style={{ background: "var(--s-surface)", color: "var(--s-on-surface)" }}
     >
+      <OnboardingTour
+        storageKey="onboarding-seen:salah"
+        steps={[
+          {
+            icon: "mosque",
+            title: "Welcome to Salah Tracker",
+            body: "A quiet space for devotion — log your prayers, make up what you've missed, and reflect along the way."
+          },
+          {
+            icon: "today",
+            title: "Log as you go",
+            body: "Mark each prayer on time, qada, or missed from Today, and catch up on backlog from the Qada tab."
+          },
+          {
+            icon: "explore",
+            title: "More than tracking",
+            body: "Find the Qibla, a Hijri calendar, duas, and self-reflection tools under Learn & More — all offline-friendly."
+          }
+        ]}
+      />
       {/* Header */}
       <header
         className="fixed inset-x-0 top-0 z-50 backdrop-blur-xl"

@@ -30,6 +30,7 @@ import { usePlayer } from "./hooks/usePlayer";
 import { usePullToRefresh } from "./hooks/usePullToRefresh";
 import { Gate } from "./components/Gate";
 import { ResetPassword } from "./components/ResetPassword";
+import { OnboardingTour } from "./components/OnboardingTour";
 import { Player } from "./components/Player";
 import { SalahView } from "./components/salah/SalahView";
 import { resolveDefaultApp } from "./lib/appMode";
@@ -431,6 +432,26 @@ export default function App() {
       className="mesh-gradient mx-auto min-h-dvh max-w-xl"
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6rem)" }}
     >
+      <OnboardingTour
+        storageKey="onboarding-seen:adios"
+        steps={[
+          {
+            icon: "headset",
+            title: "Welcome to Adios",
+            body: "A quiet space for intentional listening — lectures, reminders, and reflections, organized your way."
+          },
+          {
+            icon: "folder",
+            title: "Organize your library",
+            body: "Sort tracks into folders, search across everything, and drag to reorder both tracks and folders."
+          },
+          {
+            icon: "download",
+            title: "Take it offline",
+            body: "Keep a folder or a single track downloaded so it plays without a connection — pick how long to keep it."
+          }
+        ]}
+      />
       <header
         className="sticky top-0 z-30 flex items-center justify-between bg-surface/80 px-4 backdrop-blur-xl"
         style={{

@@ -278,7 +278,10 @@ export function SalahStats({ logs, qadaLogs }: Props) {
         URL.revokeObjectURL(url);
       }
     } catch (e) {
-      if ((e as Error)?.name !== "AbortError") console.error(e);
+      if ((e as Error)?.name !== "AbortError") {
+        console.error(e);
+        alert("Couldn't share your progress — check your connection.");
+      }
     } finally {
       setSharing(false);
     }

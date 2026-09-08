@@ -110,8 +110,13 @@ export function SalahView({ onSwitchApp, theme, onToggleTheme }: Props) {
   }, []);
 
   const handleMarkDuaAnswered = useCallback(async (id: string) => {
-    const saved = await markDuaAnswered(id);
-    setDuas((ds) => ds.map((d) => (d.id === id ? saved : d)));
+    try {
+      const saved = await markDuaAnswered(id);
+      setDuas((ds) => ds.map((d) => (d.id === id ? saved : d)));
+    } catch (e) {
+      console.error(e);
+      alert("Couldn't save — check your connection.");
+    }
   }, []);
 
   const handleDeleteDua = useCallback(async (id: string) => {
@@ -138,6 +143,7 @@ export function SalahView({ onSwitchApp, theme, onToggleTheme }: Props) {
 
   const handleSetStatus = useCallback(
     async (day: string, prayer: Prayer, status: PrayerStatus) => {
+      vibrate(10);
       // Optimistic: swap in a temp row immediately, reconcile with the real one.
       const tempId = `temp-${day}-${prayer}`;
       setLogs((ls) => {

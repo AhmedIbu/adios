@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, lazy, Suspense } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
   supabase,
@@ -28,17 +28,29 @@ import { folderLabel } from "./lib/types";
 import { usePlayer } from "./hooks/usePlayer";
 import { Gate } from "./components/Gate";
 import { ResetPassword } from "./components/ResetPassword";
-import { Library } from "./components/Library";
-import { Upload } from "./components/Upload";
 import { Player } from "./components/Player";
 import { SalahView } from "./components/salah/SalahView";
-import { AppPicker } from "./components/AppPicker";
 import { resolveDefaultApp } from "./lib/appMode";
+
+// Adios-only screens — never reached from a Salah-only build (the family
+// APK hides the "switch app" button), so lazy-load them to keep that
+// build's first-load bundle from paying for code it can't navigate to.
+const Library = lazy(() => import("./components/Library").then((m) => ({ default: m.Library })));
+const Upload = lazy(() => import("./components/Upload").then((m) => ({ default: m.Upload })));
+const AppPicker = lazy(() => import("./components/AppPicker").then((m) => ({ default: m.AppPicker })));
 
 type ThemePreference = "dark" | "light" | "system";
 type AppChoice = "picker" | "adios" | "salah";
 
 const DEFAULT_APP = resolveDefaultApp();
+
+function FullScreenSpinner() {
+  return (
+    <main className="flex min-h-dvh items-center justify-center bg-bg" aria-busy="true">
+      <span className="material-symbols-outlined animate-spin text-3xl text-primary">progress_activity</span>
+    </main>
+  );
+}
 
 function resolveTheme(pref: ThemePreference): "dark" | "light" {
   if (pref === "system") {
@@ -358,7 +370,11 @@ export default function App() {
     return <Gate />;
   }
   if (app === "picker") {
-    return <AppPicker onSelect={setApp} />;
+    return (
+      <Suspense fallback={<FullScreenSpinner />}>
+        <AppPicker onSelect={setApp} />
+      </Suspense>
+    );
   }
 
   if (app === "salah") {
@@ -578,6 +594,7 @@ export default function App() {
       </nav>
 
       <main className="animate-app-in space-y-6 px-4 pt-4">
+        <Suspense fallback={<div className="animate-pulse rounded-2xl bg-surface-container" style={{ height: "60vh" }} />}>
         {view === "home" && (
           <Library
             playedOnly
@@ -636,6 +653,7 @@ export default function App() {
             onDeleteFolder={handleDeleteFolder}
           />
         )}
+        </Suspense>
       </main>
 
       <Player

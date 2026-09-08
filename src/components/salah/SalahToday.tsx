@@ -13,7 +13,8 @@ import {
 } from "../../lib/salah";
 import { computeDayTimes, hasLocation } from "../../lib/prayertimes";
 import type { Intention } from "../../lib/journal";
-import { dailyHadith, dailyQuote } from "../../lib/reminders";
+import { dailyAyah, dailyHadith, dailyQuote } from "../../lib/reminders";
+import { toHijri } from "../../lib/hijri";
 import { PRAYER_META } from "./meta";
 import { SalahBreathing } from "./SalahBreathing";
 import { SalahIntentionRecorder } from "./SalahIntentionRecorder";
@@ -93,6 +94,7 @@ export function SalahToday({
   const todayStr = toDayString(new Date());
   const quote = dailyQuote(todayStr);
   const hadith = dailyHadith(todayStr);
+  const ayah = dailyAyah(todayStr);
   const map = useMemo(() => buildLogMap(logs), [logs]);
   const dayEntry = map.get(todayStr);
   const prayed = prayedCount(dayEntry);
@@ -114,6 +116,9 @@ export function SalahToday({
     const id = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(id);
   }, []);
+
+  const hijriToday = useMemo(() => toHijri(now), [now]);
+  const ramadanDay = hijriToday.month === 9 ? hijriToday.day : null;
 
   // "Logged X as Y" undo snackbar — reverts to unlogged, not to whatever it
   // was before, since that's the only state a prayer can meaningfully return to.
@@ -193,6 +198,37 @@ export function SalahToday({
 
   return (
     <section className="flex flex-col gap-6 pb-6">
+      {/* Ramadan mode — auto-detected from the Hijri date, no toggle needed. */}
+      {ramadanDay !== null && (
+        <div
+          className="relative flex items-center gap-4 overflow-hidden rounded-2xl p-5 shadow-sm"
+          style={{ background: "linear-gradient(to right, var(--s-tertiary-container), var(--s-surface-container))" }}
+        >
+          <span
+            className="material-symbols-outlined pointer-events-none absolute -right-3 -top-3 text-[90px] opacity-10"
+            style={{ color: "var(--s-tertiary)" }}
+          >
+            nightlight
+          </span>
+          <div
+            className="relative z-10 flex h-12 w-12 flex-none items-center justify-center rounded-full"
+            style={{ background: "var(--s-tertiary)" }}
+          >
+            <span className="material-symbols-outlined text-[24px]" style={{ color: "var(--s-on-tertiary-container)" }}>
+              nightlight
+            </span>
+          </div>
+          <div className="relative z-10 flex flex-col">
+            <span className="font-headline text-lg" style={{ color: "var(--s-on-surface)" }}>
+              Ramadan Mubarak — Day {ramadanDay}
+            </span>
+            <span className="text-xs" style={{ color: "var(--s-on-surface-variant)" }}>
+              A blessed month for fasting, Taraweeh, and extra reflection.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Badges row */}
       {(weekCmp?.isNewBest || streak > 0 || justBroke) && (
         <div className="flex flex-wrap items-center gap-2">
@@ -384,6 +420,31 @@ export function SalahToday({
           Daily Reflection
         </h3>
         <div className="-mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-2">
+          <div
+            className="relative flex h-64 w-[85%] flex-none snap-center flex-col justify-end overflow-hidden rounded-xl p-6"
+            style={{ background: "linear-gradient(to bottom right, var(--s-tertiary-container), var(--s-surface-container))" }}
+          >
+            <span
+              className="material-symbols-outlined pointer-events-none absolute -right-4 -top-4 text-[140px] opacity-10"
+              style={{ color: "var(--s-tertiary)" }}
+            >
+              auto_awesome
+            </span>
+            <div className="relative z-10 flex flex-col gap-2">
+              <span
+                className="text-[10px] font-bold uppercase tracking-widest"
+                style={{ color: "var(--s-on-tertiary-container)" }}
+              >
+                Ayah of the Day
+              </span>
+              <p className="text-lg italic leading-relaxed" style={{ color: "var(--s-on-surface)" }}>
+                "{ayah.text}"
+              </p>
+              <p className="text-sm" style={{ color: "var(--s-on-surface-variant)" }}>
+                — {ayah.source}
+              </p>
+            </div>
+          </div>
           <div
             className="relative flex h-64 w-[85%] flex-none snap-center flex-col justify-end overflow-hidden rounded-xl p-6"
             style={{ background: "linear-gradient(to bottom right, var(--s-primary-container), var(--s-surface-container))" }}

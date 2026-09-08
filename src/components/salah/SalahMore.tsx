@@ -7,6 +7,7 @@ import { SalahHijriCalendar } from "./SalahHijriCalendar";
 import { SalahIslamicEvents } from "./SalahIslamicEvents";
 import { SalahZakahCalculator } from "./SalahZakahCalculator";
 import { SalahPrayerTimeSettings } from "./SalahPrayerTimeSettings";
+import { SalahQiblaCompass } from "./SalahQiblaCompass";
 
 interface Props {
   reflections: Reflection[];
@@ -19,7 +20,7 @@ interface Props {
   onSaveSettings: (settings: SalahSettingsRow) => Promise<void>;
 }
 
-type Tool = "hijri" | "zakah" | "settings" | null;
+type Tool = "hijri" | "zakah" | "qibla" | "settings" | null;
 
 function ToolSheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
@@ -96,6 +97,18 @@ export function SalahMore({ settings, onSaveSettings, ...learnProps }: Props) {
           <button
             className="flex flex-col items-center justify-center gap-3 rounded-xl p-4 transition-transform active:scale-95"
             style={{ background: "var(--s-surface-container)" }}
+            onClick={() => setTool("qibla")}
+          >
+            <span className="material-symbols-outlined text-[28px]" style={{ color: "var(--s-tertiary)" }}>
+              explore
+            </span>
+            <span className="text-center text-xs font-medium" style={{ color: "var(--s-on-surface)" }}>
+              Qibla
+            </span>
+          </button>
+          <button
+            className="flex flex-col items-center justify-center gap-3 rounded-xl p-4 transition-transform active:scale-95"
+            style={{ background: "var(--s-surface-container)" }}
             onClick={() => setTool("settings")}
           >
             <span className="material-symbols-outlined text-[28px]" style={{ color: "var(--s-tertiary)" }}>
@@ -116,6 +129,11 @@ export function SalahMore({ settings, onSaveSettings, ...learnProps }: Props) {
       {tool === "zakah" && (
         <ToolSheet title="Zakah Calculator" onClose={() => setTool(null)}>
           <SalahZakahCalculator />
+        </ToolSheet>
+      )}
+      {tool === "qibla" && (
+        <ToolSheet title="Qibla Direction" onClose={() => setTool(null)}>
+          <SalahQiblaCompass settings={settings} />
         </ToolSheet>
       )}
       {tool === "settings" && (

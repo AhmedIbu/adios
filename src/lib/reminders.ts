@@ -180,6 +180,7 @@ export function dailyPrompt(dayString: string): string {
 
 const HADITHS = REMINDERS.filter((r) => r.category === "hadith");
 const QUOTES = REMINDERS.filter((r) => r.category === "quote");
+const AYAHS = REMINDERS.filter((r) => r.category === "quran");
 
 /** Same hadith for the whole calendar day, from the hadith-only subset. */
 export function dailyHadith(dayString: string): Reminder {
@@ -189,6 +190,11 @@ export function dailyHadith(dayString: string): Reminder {
 /** Same quote for the whole calendar day, from the quote-only subset. */
 export function dailyQuote(dayString: string): Reminder {
   return QUOTES[(hashDay(dayString) + 19) % QUOTES.length];
+}
+
+/** Same ayah for the whole calendar day, from the Quran-only subset. */
+export function dailyAyah(dayString: string): Reminder {
+  return AYAHS[(hashDay(dayString) + 29) % AYAHS.length];
 }
 
 export function allHadiths(): Reminder[] {
